@@ -19,7 +19,7 @@
 
 **本轮交付物**：
 
-1. 可点的原型 —— `prototypes/v0.2/index.html`（11 个一级页 / 32 个二级页签，两套演示档案）
+1. 可点的原型 —— `prototypes/v0.2/index.html`（11 个一级页 / 32 个二级页签，三套演示档案：术后辅助 / 晚期线序 / 术前靶向未手术）
 2. 可查的库 —— `schema/0001_initial.sql`（25 表 184 列，已冻结）+ `demo/demo-data.sqlite`
 3. 设计文档 —— `docs/SPEC.md`、`docs/DEV-REQUIREMENTS-2026-10-21.md`、`docs/SCHEMA.md`、
    `docs/CLINICAL-DATA-2026.md`、`docs/DIFF-MATRIX.md`、`docs/PATIENT-FLOW.md`、`docs/DEV-PLAN.md`

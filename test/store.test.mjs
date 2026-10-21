@@ -36,9 +36,9 @@ test('② seedDemo 幂等：调两次只写一份档案', () => {
   const a = seedDemo(db);
   const b = seedDemo(db);
   assert.equal(a.skipped, false);
-  assert.equal(a.subjects, 2);
+  assert.equal(a.subjects, 3);
   assert.equal(b.skipped, true, '第二次应整批跳过');
-  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM subjects').get().n, 2);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM subjects').get().n, 3);
   close(db);
 });
 
@@ -47,7 +47,7 @@ test('③ parity：库里读出的 profiles 与 demo-data.js 逐字段一致', (
   migrate(db);
   seedDemo(db);
   const payload = bootstrap(db, { version: '0.1.0', build: 'test' });
-  for (const key of ['A', 'B']) {
+  for (const key of ['A', 'B', 'C']) {
     assert.deepStrictEqual(payload.profiles[key], DEMO.profiles[key], `profiles.${key} 与 demo-data.js 不一致`);
   }
   assert.equal(payload.trials.length, DEMO.trials.length);
@@ -76,7 +76,7 @@ test('④ 读模型形状：指标点按 ord 排序、数值是数字、分类�
   assert.ok(p.docs.length >= 1 && p.candidates.length >= 1, '病情整理用的 docs/candidates 要带出来');
   assert.ok(p.pathology && p.pathology.rows.length >= 1, '病理档案要带出来');
   assert.ok(p.risk && p.risk.rows.length >= 2, '危险度要带出多套评分体系（不合并）');
-  assert.deepEqual(listSubjects(db).map((s) => s.profile_key), ['A', 'B']);
+  assert.deepEqual(listSubjects(db).map((s) => s.profile_key), ['A', 'B', 'C']);
   close(db);
 });
 

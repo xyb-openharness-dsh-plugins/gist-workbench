@@ -35,15 +35,15 @@ test('① /api/health 返回 ok 与版本', async () => {
   });
 });
 
-test('② /api/bootstrap 返回两个档案与临床研究，且与原型数据同形', async () => {
+test('② /api/bootstrap 返回三个档案与临床研究，且与原型数据同形', async () => {
   await withServer(async ({ url }) => {
     const r = await fetch(`${url}api/bootstrap`);
     assert.equal(r.status, 200);
     const j = await r.json();
-    assert.deepEqual(Object.keys(j.profiles).sort(), ['A', 'B']);
+    assert.deepEqual(Object.keys(j.profiles).sort(), ['A', 'B', 'C']);
     assert.ok(j.profiles.A.metrics.length > 10);
     assert.ok(j.profiles.A.docs.length >= 1, '病情整理的资料库要随档案返回');
-    assert.equal(j.trials.length, 10);
+    assert.equal(j.trials.length, 16, '演示试验行应与资料包条数一致');
     assert.equal(j.agent.available, true, '开发版自带挂载位演示');
   });
 });

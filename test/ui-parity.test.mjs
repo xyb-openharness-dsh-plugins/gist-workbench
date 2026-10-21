@@ -1,7 +1,7 @@
 /* public/ 与 prototypes/v0.2/ 的 UI parity 测试（零依赖，node --test）。
    做法：同一份数据（prototypes/v0.2/demo-data.js）分别喂给原型 app.js 与 public/app.js，
    两边都用 new Function(src + 导出语句)() 在最小 DOM shim 里跑起来，
-   然后按「11 个一级视图 × 2 个档案 × 每个二级页签」逐个调用 VIEWS[view]() 比对 HTML 字符串。
+   然后按「11 个一级视图 × 3 个档案 × 每个二级页签」逐个调用 VIEWS[view]() 比对 HTML 字符串。
    差异只允许来自下面 WHITELIST 里明确记录的项（命中会在结尾打印），其它任何不等都算失败。 */
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -133,13 +133,15 @@ const PUB = runApp(path.join(PUBLIC_DIR, 'app.js'), EXPORT_LINE_DEV);
 await PUB.bootReady;                            // 等 bootstrap → buildData → init 完成
 
 const VIEW_IDS = Object.keys(PROTO.VIEWS);
-const PROFILES = ['A', 'B'];
+/* 三套演示档案都要参与穷举：C 是「术前靶向 · 未手术」这一型，没有 surgery 分节、
+   危险度是「待定（未切除）」——最容易在两边渲染时分叉的就是它。 */
+const PROFILES = ['A', 'B', 'C'];
 /* GIST：11 个一级视图（含「资料库」records）；「病理与危险度」与「靶向用药」是两页新增，
    加上「治疗历程」「检查与指标」「生活与营养」都要参与分流断言。
    这里列的是 SUBPAGES 里有二级页签的全部视图（10 个；timeline 也有页签，一并列上）。 */
 const SUB_VIEWS = ['records', 'pathology', 'treatment', 'meds', 'nutrition', 'labs', 'timeline', 'mind', 'review', 'trials'];
 
-test('① 视图 HTML 逐字符一致：11 视图 × 2 档案 × 每个二级页签', async (t) => {
+test('① 视图 HTML 逐字符一致：11 视图 × 3 档案 × 每个二级页签', async (t) => {
   assert.equal(VIEW_IDS.length, 11, `VIEWS 应有 11 个一级视图（SPEC §4 的 10 个 + 资料库，Q8），实际 ${VIEW_IDS.length}`);
   assert.deepEqual(VIEW_IDS, Object.keys(PUB.VIEWS), '两边 VIEWS 的键集合必须一致');
   let cases = 0;

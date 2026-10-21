@@ -81,7 +81,7 @@ function readProfile(db, key) {
   const pathRows = rows(db, "SELECT a, b FROM pathology_rows WHERE profile_key = ? AND kind = 'row' ORDER BY ord", key).map((r) => trimTail([r.a, r.b]));
   const pathGaps = rows(db, "SELECT a, b FROM pathology_rows WHERE profile_key = ? AND kind = 'gap' ORDER BY ord", key).map((r) => trimTail([r.a, r.b]));
 
-  return {
+  const profile = {
     name: s.name,
     sex: s.sex,
     age: s.age,
@@ -121,6 +121,13 @@ function readProfile(db, key) {
       .map((r) => trimTail([r.id, r.name, r.value, r.source, r.status])),
     metrics: readMetrics(db, key),
   };
+  /* 没有这一节就整键省略（不是 null）：演示数据里"未手术"就是没有 surgery 这个键，
+     返回 null 会让 parity 判成不一致，前端也会多出一条空卡片。 */
+  for (const section of ['pathology', 'risk', 'pathway', 'surgery', 'meds', 'adherence',
+    'sideEffects', 'imaging', 'monitor', 'bleeds', 'nutrition']) {
+    if (profile[section] === null) delete profile[section];
+  }
+  return profile;
 }
 
 export function listSubjects(db) {

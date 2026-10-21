@@ -1198,7 +1198,12 @@ document.addEventListener('click', (e) => {
       closeDialog(); render(); toast('已接受：写入演示数据库（record + 事实表），候选留版本不覆盖');
     },
     'add-review-question': () => {
-      const q = state.profile === 'A' ? '请帮我核实：病理报告的核分裂象与肿瘤破裂情况，以及 NGS 扩展检测有没有必要补做。' : '请帮我核实：2026-07 MRI 肝转移灶范围与结论原文，以及舒尼替尼这轮评估的安排。';
+      const ASK = {
+        A: '请帮我核实：病理报告的核分裂象与肿瘤破裂情况，以及 NGS 扩展检测有没有必要补做。',
+        B: '请帮我核实：2026-07 MRI 肝转移灶范围与结论原文，以及舒尼替尼这轮评估的安排。',
+        C: '请帮我核实：穿刺标本能否评估核分裂象、危险度什么时候能定，以及 12 月手术评估要带哪些资料。',
+      };
+      const q = ASK[state.profile] || ASK.A;
       state.questions = state.questions || [];
       if (!state.questions.includes(q)) state.questions.push(q);
       render(); toast('已加入复诊准备的问题清单');

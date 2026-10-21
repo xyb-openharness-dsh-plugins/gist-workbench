@@ -16,7 +16,7 @@
 | 1 | GIST 2026 临床试验资料包 | `research/gist-cancer/{manifest.json, trials-2026.jsonl, gist_cancer_trials_2026.sqlite, README.md}` | manifest 记录数 = jsonl 行数 = sqlite 行数；sha256 与实算一致；`docs/CLINICAL-DATA-2026.md` 写清口径与限制 |
 | 2 | 采集脚本随项目版本化 | `scripts/fetch-gist-trials-2026.mjs` | `--dry-run` 只打印命中数 + 剔除样本；重跑可复现 |
 | 3 | GIST 数据模型 | `schema/0001_initial.sql` + `schema/freeze-contract.md` | `node scripts/check-schema.mjs` 验哈希；改结构只能加 `0002_*.sql` |
-| 4 | 2 套 6 个月演示档案 | `demo/build-demo-data.mjs` → `prototypes/v0.2/demo-data.js` + `demo/demo-data.sqlite` | 单测：指标点升序、主序列跨度 ≥150 天、两档案都能渲染全部视图 |
+| 4 | 3 套 6 个月演示档案（A 术后辅助 / B 晚期线序 / C 术前靶向·未手术） | `demo/build-demo-data.mjs` → `prototypes/v0.2/demo-data.js` + `demo/demo-data.sqlite` | 单测：指标点升序、主序列跨度 ≥150 天、三套档案都能渲染全部视图 |
 | 5 | 原型 demo 四件套 | `prototypes/v0.2/{index.html, style.css, app.js, demo-data.js}` | 浏览器打开无控制台错误；一级页 **11 个**（SPEC §4）；二级页签 **32 个** |
 | 6 | 开发版 `public/` + DSH 链路 | `public/{index.html, style.css, shell.css, app.js}`、`dsh/*`、`lib/*` | `test/ui-parity.test.mjs` 逐视图比对原型与开发版 |
 | 7 | 顶栏 / AI 面板 / 一图秀 / 3D 卡 | 见第二节 | 见第二节 |
