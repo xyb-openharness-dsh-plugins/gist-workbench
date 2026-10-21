@@ -13,6 +13,7 @@ import { dirname, extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { COMMANDS, CommandError } from './commands.js';
+import { saveExport, saveImport, MAX_IMPORT_BYTES } from './files.js';
 
 const PUBLIC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'public');
 
@@ -147,6 +148,25 @@ function readJson(req) {
   });
 }
 
+/** 读原始字节（导入原件用）。上限 40MB，超了立刻断，不把半个文件写进资料目录。 */
+function readBytes(req, limit = MAX_IMPORT_BYTES) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > limit) {
+        reject(new BodyError('FILE_TOO_LARGE', `文件超过 ${Math.round(limit / 1024 / 1024)} MB 上限，未导入`, 413));
+        req.destroy();
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on('end', () => resolve(Buffer.concat(chunks)));
+    req.on('error', (error) => reject(Object.assign(new BodyError('BODY_READ_FAILED', error.message), { status: 400 })));
+  });
+}
+
 export function createHandler({ workbench }) {
   return function handle(req, res) {
     const url = new URL(req.url, `http://${req.headers.host || '127.0.0.1'}`);
@@ -167,8 +187,40 @@ export function createHandler({ workbench }) {
       }
     }
 
+    /* 导入原件：原始字节 + 查询参数带元信息，不套 JSON/base64（40MB 的文件 base64 会胀三分之一）。 */
+    if (path === '/api/import') {
+      if (req.method !== 'POST') { res.writeHead(405, { allow: 'POST' }); return res.end(); }
+      return readBytes(req).then((bytes) => {
+        try {
+          const out = saveImport(workbench.db, workbench.workspace, {
+            profile: url.searchParams.get('profile') || '',
+            name: url.searchParams.get('name') || '',
+            type: url.searchParams.get('type') || '其他',
+            bytes
+          });
+          return json(200, out);
+        } catch (error) {
+          if (error instanceof CommandError) return json(error.status, { error: error.code, message: error.message });
+          return json(500, { error: 'import_failed', message: error.message });
+        }
+      }).catch((error) => json(error.status || 400, { error: error.code || 'BAD_REQUEST', message: error.message }));
+    }
+
+    /* 导出 Markdown 到资料目录 exports/ */
+    if (path === '/api/export') {
+      if (req.method !== 'POST') { res.writeHead(405, { allow: 'POST' }); return res.end(); }
+      return readJson(req).then((body) => {
+        try {
+          return json(200, saveExport(workbench.workspace, body));
+        } catch (error) {
+          if (error instanceof CommandError) return json(error.status, { error: error.code, message: error.message });
+          return json(500, { error: 'export_failed', message: error.message });
+        }
+      }).catch((error) => json(error.status || 400, { error: error.code || 'BAD_REQUEST', message: error.message }));
+    }
+
     /* 写命令：只认 commands.js 的 COMMANDS 表，加命令只改那张表。
-       只收 POST + JSON；请求体上限 64KB（这四个命令都是几十个字，超了基本是搞错了）。 */
+       只收 POST + JSON；请求体上限 64KB（这几个命令都是几十个字，超了基本是搞错了）。 */
     if (COMMANDS[path]) {
       if (req.method !== 'POST') {
         res.writeHead(405, { allow: 'POST' });

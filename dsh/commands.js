@@ -257,6 +257,39 @@ export function recordNutrition(db, input = {}) {
   });
 }
 
+/* ---------------- ⑥ 候选核对 ---------------- */
+
+const CAND_STATUS = new Set(['待核对', 'accepted', 'rejected']);
+
+/**
+ * 核对一条候选字段：待核对 → 接受 / 驳回。
+ *
+ * 为什么这里可以 UPDATE：候选是「从原件里抄出来、还没被确认的一句话」，
+ * 核对只是改它自己的审核状态与转录值，**不动事实表**（病理 / 指标 / 用药各自另有行）。
+ * 契约② 约束的是事实记录的更正，不是审核状态流转。
+ */
+export function reviewCandidate(db, input = {}) {
+  const profile = assertSubject(db, input.profile);
+  const id = text(input.id, '候选编号', { required: true, max: 60 });
+  const status = text(input.status, '核对结果', { required: true, max: 20 });
+  if (!CAND_STATUS.has(status)) {
+    throw new CommandError('STATUS_INVALID', `核对结果只能是「待核对 / accepted / rejected」，收到：${status}`);
+  }
+
+  const found = db.prepare('SELECT id, name, value, status FROM candidate_fields WHERE profile_key = ? AND id = ?')
+    .get(profile, id);
+  if (!found) throw new CommandError('CANDIDATE_NOT_FOUND', `没有这条候选：${id}`, 404);
+
+  const value = text(input.value, '转录内容', { max: 500 }) ?? found.value;
+
+  return inTx(db, () => {
+    // 只改这一行的转录值与审核状态；原文出处（source）不动
+    db.prepare('UPDATE candidate_fields SET value = ?, status = ? WHERE profile_key = ? AND id = ?')
+      .run(value, status, profile, id);
+    return { ok: true, status: found.status === status && found.value === value ? 'unchanged' : 'updated', row: { id, value, status } };
+  });
+}
+
 /* ---------------- 路由表 ----------------
  * server.js 只认这张表：加命令 = 加一行，不在 HTTP 层再写一遍分派。 */
 export const COMMANDS = {
@@ -265,4 +298,5 @@ export const COMMANDS = {
   '/api/metric-points': recordMetricPoint,
   '/api/viewpoints': recordViewpoint,
   '/api/nutrition': recordNutrition,
+  '/api/candidates': reviewCandidate,
 };

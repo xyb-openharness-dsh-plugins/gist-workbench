@@ -556,24 +556,46 @@ function docsTable() {
   </tbody></table></div>`;
 }
 
-/* 选文件：原型不读真实文件内容，只取文件名 / 大小 / 修改日期做一条演示记录。
-   真实版在这里算 sha256 去重（同 subject + sha256 重复导入不重置解析状态）。 */
+/* 选文件：把原件**复制**进资料目录 imports/，库里记一行「待核对」。
+   相同的文件（内容 sha256 前 12 位一样）不重复导入、不重置解析状态。
+   原件本身不改、不移动；解析结果将来也只会进「候选」，不直接改事实表。 */
 function ingestFiles(list) {
   const files = Array.from(list || []);
   if (!files.length) return;
-  for (const f of files) {
-    if (f.size > 40 * 1024 * 1024) { toast(`「${f.name}」超过 40 MB 上限，未导入`); continue; }
-    DOCS[state.profile].unshift({
-      id: `u${state.uploads + 1}-${Math.random().toString(36).slice(2, 6)}`,
-      name: f.name, fileName: f.name, size: f.size,
-      date: todayISO(), type: '其他', status: '待核对',
-      note: '刚导入 · 未解析'
+  const kind = ($('#doc-kind') && $('#doc-kind').value) || '其他';
+  const tasks = files.map((f) => {
+    if (f.size > 40 * 1024 * 1024) {
+      toast(`「${f.name}」超过 40 MB 上限，未导入`);
+      return Promise.resolve(null);
+    }
+    const qs = new URLSearchParams({ profile: state.profile, name: f.name, type: kind });
+    return fetch(`${apiBase()}/api/import?${qs}`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/octet-stream' },
+      body: f
+    }).then(async (r) => {
+      const j = await r.json().catch(() => null);
+      if (!r.ok) throw new Error((j && j.message) || `HTTP ${r.status}`);
+      return j;
     });
-    state.uploads += 1;
-    state.lastUpload = DOCS[state.profile][0].id;
-  }
-  render();
-  toast(`已导入 ${files.length} 份材料（演示）；原件不会被改动，解析结果先当候选`);
+  });
+
+  return Promise.all(tasks)
+    .then((outs) => {
+      const ok = outs.filter(Boolean);
+      const dup = ok.filter((o) => o.status === 'unchanged').length;
+      if (!ok.length) return null;
+      return loadBootstrap()
+        .then((data) => {
+          buildData(data);
+          render();
+          toast(dup
+            ? `导入 ${ok.length} 份，其中 ${dup} 份此前已存在（内容相同）；原件已复制到资料目录 imports/`
+            : `已导入 ${ok.length} 份材料；原件已复制到资料目录 imports/，解析结果先当候选`);
+        })
+        .catch(() => toast('已导入，但页面刷新失败；刷新一次即可看到'));
+    })
+    .catch((e) => toast(`没能导入：${e.message}`));
 }
 
 function vRecords() {
@@ -996,7 +1018,8 @@ function vReview() {
     <p class="small-note">清单只是提示，不用每条都问；把最想问的两三条写在最前面即可。</p></div>
     <div class="card"><div class="card-head"><h2>我的看法（不是医生结论）</h2></div>
     ${(p.viewpoints || []).slice(0, 2).map(v => row(`<b>${esc(v[0])} · ${esc(v[1])}</b>`, esc(v[2]), pill('不是医生结论', 'grey'))).join('') || row('<b>还没有记录</b>', '在「心理支持」里写下的感受会出现在这里。')}
-    <p class="small-note">"我的看法"与医生的结论分开保存，导出时也分开；这样讨论时不会把感受当成诊断。</p></div>`;
+    <p class="small-note">"我的看法"与医生的结论分开保存，导出时也分开；这样讨论时不会把感受当成诊断。</p>
+    <div class="actions"><button class="primary" data-action="export-review">导出这份复诊清单</button></div></div>`;
   const bodies = [
     `<div class="section-title"><h2>复查节奏</h2><span class="source-link">以医生安排为准</span></div><div class="card">${rhythm}
       <p class="small-note">以上为医生安排与常见节奏摘录，仅供准备讨论；实际安排以你的医生为准。</p></div>
@@ -1520,10 +1543,12 @@ document.addEventListener('click', (e) => {
       const ta = $('#export-edit');
       const txt = ta ? ta.value.trim() : '';
       if (!txt) { toast('导出内容是空的；先填一点内容再保存。'); return; }
-      const docs = DOCS[state.profile];
-      docs.unshift({ id: 'ex' + Date.now().toString(36), name: `复诊准备 · ${P().name} · ${todayISO()}`, fileName: `复诊准备-${todayISO()}.md`, size: new Blob([txt]).size, date: todayISO(), type: '其他', status: '待核对', note: '生成文件 · 由导出创建，可在草稿里核对' });
-      closeDialog();
-      toast('已保存到资料目录 exports/（演示）；在「病情整理 · 资料库」可见');
+      return postCommand('/api/export', { kind: '复诊准备', text: txt })
+        .then((res) => {
+          closeDialog();
+          toast(`已写入资料目录 exports/${res.path.split('/').pop()}`);
+        })
+        .catch((e) => toast(`没能保存：${e.message}`));
     },
     'load-report': () => {
       if (state.parsing) return;
@@ -1556,8 +1581,16 @@ document.addEventListener('click', (e) => {
     'cand-save': (el) => {
       const c = CANDS[state.profile].find((x) => x.id === el.dataset.id);
       const v = $('#cand-input') ? $('#cand-input').value.trim() : '';
-      if (c && v) { c.value = v; c.status = 'accepted'; }
-      closeDialog(); render(); toast('已接受：写入演示数据库（record + 事实表），候选留版本不覆盖');
+      if (!c || !v) { toast('这条内容不能是空的'); return; }
+      return postCommand('/api/candidates', { profile: state.profile, id: c.id, value: v, status: 'accepted' })
+        .then((res) => {
+          closeDialog();
+          return loadBootstrap().then((data) => {
+            buildData(data); render();
+            toast(res.status === 'unchanged' ? '这条此前已接受过，没有改动' : '已接受：候选标为已核对，原件与出处保留');
+          });
+        })
+        .catch((e) => toast(`没能保存：${e.message}`));
     },
     'add-review-question': () => {
       const ASK = {

@@ -1,5 +1,31 @@
 # 变更记录
 
+## 2026-10-21 · 原件导入 / Markdown 导出 / 候选核对三条链路落盘
+
+- **新增 `dsh/files.js`**：`saveImport()` 与 `saveExport()`。两条硬边界——只写用户选定的资料目录下的
+  `imports/` 与 `exports/`，不写系统临时目录；文件名只留基名（`../../../etc/passwd` → `passwd`），
+  控制字符与 `<>:"|?*` 剥掉，限长 120。
+- **`POST /api/import`**：请求体是**原始字节**（不套 base64），元信息走查询参数（文件名含 `&` 会破坏 body 边界判定）。
+  单份 40 MB 上限，超限 `req.destroy()` + 413。落盘名 `f<sha256前12位>-<name>`，同一内容再导入回 `unchanged`，
+  **不重复写文件、不重置解析状态**；原件是复制，用户原来那个文件不动。
+- **`POST /api/export`**：落 `exports/<本地日期>-<kind>.md`，同名覆盖——导出物可重生成，不是事实，
+  所以不受契约② 约束；`kind` 只留中英文数字与 `-`。
+- **`POST /api/candidates`**：`reviewCandidate` 只 `UPDATE candidate_fields` 的 `value` / `status`，
+  **不动任何事实表**；三态 `待核对 / accepted / rejected`，`value` 省略时沿用原值。
+- **前端接线**：`ingestFiles` 用 `fetch(..., { body: file })` 直传 `File`；`export-save` / `cand-save` 走 `postCommand`。
+  「复诊准备」的「就诊准备」页签补了「导出这份复诊清单」按钮（此前 `export-review` 只挂在动作表里，页面上没有入口）。
+- **测试**：新增 `test/files.test.mjs` 5 项（落盘内容一致 / sha256 去重 / 路径穿越 / 空与超限 / 导出覆盖）；
+  `test/server.test.mjs` 加 2 项（`/api/import` 原始字节、`/api/export`）；全量 **39/39**；`npm run check` 全绿。
+- **端到端**（`gist-io-e2e.mjs`，Node 22 + 无头 Chrome）：
+  ```
+  导入 toast：已导入 1 份材料；原件已复制到资料目录 imports/
+  imports/ 内容：['f5c7c15feb6b5-gist-sample-*.txt']  落盘内容一致：true
+  重复导入：导入 1 份，其中 1 份此前已存在（内容相同）  imports/ 仍有 1 份
+  导出 toast：已写入资料目录 exports/2026-10-21-复诊准备.md
+  候选 toast：已接受：候选标为已核对，原件与出处保留   已接受候选数：1
+  页面错误：无
+  ```
+
 ## 2026-10-21 · 指标补录与进食记录接进前端（写命令补齐五条）
 
 - **新增 `POST /api/nutrition`**（`recordNutrition`）：日期 + 餐次为幂等键，份量与吃了什么至少一项，

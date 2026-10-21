@@ -59,6 +59,52 @@
 | `UPDATE` / `DELETE` 旧记录 | 契约② 更正只新增版本 |
 | 病理 / 危险度 / 手术 / 线序 / 剂量的随手填 | 这些是医生给的事实，必须走「上传 → 候选 → 逐条核对」，见 `docs/18-MINERU-PARSING.md` |
 
+## 文件进出（M2 第三段）
+
+原件与导出物都落在**用户选定的资料目录**下，`imports/` 与 `exports/` 两个子目录，不写别处、不写系统临时目录。
+
+### 导入原件
+
+`POST /api/import?profile=A&name=病理报告.pdf&type=病理报告`
+
+- **请求体是原始字节**（`content-type: application/octet-stream`），不套 base64——大文件不额外膨胀 33%；
+- 元信息走查询参数（文件名里带 `&` `/` 会破坏 body 的边界判定）；
+- 上限 40 MB，超了服务端 `req.destroy()` 并回 413；
+- 文件名只保留基名：`../../../etc/passwd` → `passwd`，控制字符与 `<>:"|?*` 一并剥掉，限长 120；
+- 落盘 `imports/<id>-<name>`，其中 `id = "f" + sha256前12位`；
+- 同一份内容（sha256 相同）再导入 → `unchanged`，**不重复写文件、不重置解析状态**；原件是复制，不改动用户原来那个文件。
+
+| 响应 | 含义 |
+| --- | --- |
+| `{ ok, status:'created', id, name, path, size }` | 首次导入，已复制进 `imports/` |
+| `{ ok, status:'unchanged', id, name, path, size }` | 内容此前已导入过，本次什么都没写 |
+
+导入同时落一条 `documents` 行（`status = '待核对'`、`ord = MAX+1`），所以资料库列表里会立刻出现——但**解析出来的字段只是候选**，不进事实表。
+
+### 导出 Markdown
+
+`POST /api/export`，JSON：`{ kind?, text }`
+
+- `kind` 缺省 `复诊准备`；只留中英文数字与 `-`，限长 40；
+- 落 `exports/<本地日期>-<kind>.md`，**同名覆盖**——导出物可随时重生成，不是事实（契约② 只约束事实记录）；
+- `text` 上限 512 KB，空内容拒绝。
+
+### 候选核对
+
+`POST /api/candidates`，JSON：`{ profile, id, value, status }`
+
+- `status ∈ {待核对, accepted, rejected}`；
+- **只 `UPDATE candidate_fields` 的 `value` / `status`，不动任何事实表**——契约② 约束的是事实记录（更正只新增版本），审核流转本身可以原地改状态；
+- 回应 `{ ok, status:'updated'|'unchanged', row }`；
+- 未知 `id` → 404 `CANDIDATE_NOT_FOUND`。
+
+| HTTP | code | 场景 |
+| --- | --- | --- |
+| 400 | `FILE_EMPTY` `EXPORT_EMPTY` `STATUS_INVALID` | 空文件 / 空导出内容 / 核对结果不在三态内 |
+| 413 | `FILE_TOO_LARGE` `EXPORT_TOO_LARGE` | 超 40 MB / 超 512 KB |
+| 404 | `CANDIDATE_NOT_FOUND` | 候选 id 不存在于该档案 |
+| 500 | `FILE_WRITE_FAILED` | 资料目录不可写（磁盘满 / 权限） |
+
 ## 错误码总表
 
 | HTTP | code | 场景 |
@@ -70,8 +116,9 @@
 | 413 | `BODY_TOO_LARGE` | 请求体超 64KB |
 | 500 | `bootstrap_failed` `command_failed` | 库或 SQL 层异常，`message` 带原始原因 |
 
-## 前端如何使用（下一段接线）
+## 前端如何使用（已接线）
 
-1. 写成功后**不要自己拼状态**，重新 `GET /api/bootstrap` 或按返回的 `row` 局部更新；
-2. `status === 'superseded'` 时提示「已更正，旧版本保留」——这是契约② 的用户可见面；
-3. 网络失败与业务错误分开提示：前者「没连上资料库」，后者直接用 `message`。
+1. 写成功后**不要自己拼状态**，重新 `GET /api/bootstrap`（`public/app.js` 的 `afterWrite` 就是这么做的）；
+2. `status === 'superseded'` 时提示「已更新为最新一条，旧版本保留」——这是契约② 的用户可见面；
+3. 网络失败与业务错误分开提示：前者「没连上资料库」，后者直接用 `message`；
+4. 导入用 `fetch(..., { body: file })` 直传 `File` 对象（浏览器自动按流发），别读成 base64 再拼 JSON。

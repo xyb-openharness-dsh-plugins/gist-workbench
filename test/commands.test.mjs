@@ -151,10 +151,10 @@ test('⑧ 进食：按「日期 + 餐次」幂等，改了内容追加版本；�
   close(db);
 });
 
-test('⑨ 命令表与路由一致：五条命令都是函数，路径以 /api/ 开头', () => {
+test('⑨ 命令表与路由一致：六条命令都是函数，路径以 /api/ 开头', () => {
   const paths = Object.keys(COMMANDS);
   assert.deepEqual(paths.sort(), [
-    '/api/adherence', '/api/metric-points', '/api/nutrition', '/api/side-effects', '/api/viewpoints'
+    '/api/adherence', '/api/candidates', '/api/metric-points', '/api/nutrition', '/api/side-effects', '/api/viewpoints'
   ]);
   for (const p of paths) {
     assert.ok(p.startsWith('/api/'), `${p} 必须挂在 /api/ 下`);

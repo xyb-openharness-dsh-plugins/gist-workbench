@@ -5,7 +5,7 @@
 
 import assert from 'node:assert/strict';
 import { homedir } from 'node:os';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { after, test } from 'node:test';
 import { Workbench, validateWorkspacePath } from '../dsh/workbench.js';
@@ -137,4 +137,41 @@ test('⑧ 写接口的拒绝路径：GET 405 / 坏 JSON 400 / 未知档案 404 /
     assert.equal((await noText.json()).error, 'FIELD_REQUIRED');
   });
 });
+
+test('⑨ POST /api/import：原始字节落盘，重复导入同一份返回 unchanged', async () => {
+  await withServer(async ({ url, workbench }) => {
+    const body = Buffer.from('病理报告：核分裂象 3/50 HPF', 'utf8');
+    const qs = new URLSearchParams({ profile: 'A', name: '病理-2026.txt', type: '病理报告' });
+    const r1 = await fetch(`${url}api/import?${qs}`, {
+      method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body
+    });
+    assert.equal(r1.status, 200);
+    const j1 = await r1.json();
+    assert.equal(j1.status, 'created');
+    assert.ok(j1.path.includes('/imports/'), '原件要落在 imports/ 下');
+    assert.equal(readFileSync(j1.path, 'utf8'), body.toString('utf8'));
+
+    const r2 = await fetch(`${url}api/import?${qs}`, {
+      method: 'POST', headers: { 'content-type': 'application/octet-stream' }, body
+    });
+    assert.equal((await r2.json()).status, 'unchanged', '同一份内容再导入应幂等');
+
+    const boot = await (await fetch(`${url}api/bootstrap`)).json();
+    assert.equal(boot.profiles.A.docs.filter((d) => d[0] === j1.id).length, 1, '资料库里只应有一行');
+  });
+});
+
+test('⑩ POST /api/export：写入 exports/ 并返回落盘路径', async () => {
+  await withServer(async ({ url }) => {
+    const r = await fetch(`${url}api/export`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ kind: '复诊准备', text: '# 复诊准备\n- 核分裂象原文' })
+    });
+    assert.equal(r.status, 200);
+    const j = await r.json();
+    assert.ok(j.path.endsWith('-复诊准备.md'), j.path);
+    assert.ok(j.bytes > 0);
+  });
+});
+
 

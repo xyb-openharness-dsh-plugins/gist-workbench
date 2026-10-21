@@ -36,7 +36,10 @@
 | 3D 指标卡翻面 | ✅ | `perspective:1200px` + 键盘可达 |
 | 写接口（五条命令 + 校验 + 幂等 + 更正版本） | ✅ | `dsh/commands.js`、`test/commands.test.mjs` 9/9、`docs/API-CONTRACT.md` |
 | 写接口接进前端（服药 / 反应 / 指标 / 感受 / 进食 五个入口） | ✅ | 无头实测：保存后落库并按日期出现在表格末行（`docs/shots/dev-*.png`） |
-| 上传解析实装 | ⬜ | 依赖候选核对链路（`docs/18-MINERU-PARSING.md`） |
+| 原件导入（原始字节 + sha256 去重 + 落 `imports/`） | ✅ | `dsh/files.js`、`test/files.test.mjs` 5/5；e2e：`imports/` 内容与源文件一致、重复导入 `unchanged` |
+| Markdown 导出（`exports/日期-种类.md`，同名覆盖） | ✅ | e2e：`exports/2026-10-21-复诊准备.md` 生成；`test/files.test.mjs` 覆盖重复导出 |
+| 候选逐条核对（只改审核状态，不动事实表） | ✅ | e2e：接受后 `bootstrap.candidates` 状态转 `accepted`；`test/server.test.mjs` 10/10 |
+| 上传后自动解析成候选 | ⬜ | 依赖 MinerU 通道（`docs/MINERU.md`）；当前导入只落原件 + 一条待核对 `documents` 行 |
 
 ## M3 · 装机与实测（未开始）
 
@@ -59,7 +62,8 @@
 
 1. 写命令五个入口都已接前端；仍缺「删除/撤销一条记错的记录」的入口（契约② 决定不做覆盖式删除，
    要撤销只能再记一条更正，页面上还没有这条路）。
-2. 上传与解析：`docs/18-MINERU-PARSING.md` 的链路未接。
+2. 上传后的**解析**未接：原件导入、候选核对、导出三条通路已通，但「把 PDF 变成候选字段」这一步仍是空档——
+   现在导入只产生一条 `待核对` 的 `documents` 行，候选要靠手工补录或演示数据。
 3. 多档案切换：演示只有 A/B/C 三套（C = 术前靶向 · 未手术 · 危险度待定），切换是内存态，不落库。
 4. 临床试验自动更新：资料包是 2026-10-21 快照。
 5. 账号、同步、导出 PDF。
