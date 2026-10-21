@@ -19,7 +19,7 @@
 
 ## 写（M2 第二段）
 
-四条命令对应「一天里最常记的四件事」。只收 `POST` + JSON，请求体上限 64KB。
+五条命令对应「一天里最常记的五件事」。只收 `POST` + JSON，请求体上限 64KB。
 
 | 方法/路径 | 意图 | 必填 | 选填 | 落表 | 幂等键 |
 | --- | --- | --- | --- | --- | --- |
@@ -27,6 +27,7 @@
 | `POST /api/side-effects` | 记一条反应 | `profile` `date` `term` | `grade` `action` `note` | `side_effect_rows` | 档案 + 日期 + 症状 |
 | `POST /api/metric-points` | 记一次检查结果 | `profile` `date` `metric` `value` | `src` | `metric_points` | 档案 + 指标 + 日期 |
 | `POST /api/viewpoints` | 记一条自己的看法 | `profile` `date` `text` | `mood` | `viewpoints` | 档案 + 日期（同文幂等） |
+| `POST /api/nutrition` | 记一笔进食 | `profile` `date` `slot`，且 `amount`/`foods` 至少一项 | `symptoms` `note` | `nutrition_rows` | 档案 + 日期 + 餐次 |
 
 成功响应统一 `{ ok: true, status, row | point }`，`status` 三态：
 

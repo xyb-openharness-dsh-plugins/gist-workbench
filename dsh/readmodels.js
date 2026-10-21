@@ -37,7 +37,7 @@ function readMetrics(db, key) {
     cat: m.cat ?? null,
     color: m.color ?? null,
     ...(m.kind && m.kind !== 'numeric' ? { kind: m.kind } : {}),
-    points: rows(db, 'SELECT d, v_num, v_text, src FROM metric_points WHERE profile_key = ? AND metric_key = ? ORDER BY ord, d', key, m.key)
+    points: rows(db, 'SELECT d, v_num, v_text, src FROM metric_points WHERE profile_key = ? AND metric_key = ? ORDER BY d, ord', key, m.key)
       .map((p) => ({ d: p.d, v: p.v_num === null ? p.v_text : p.v_num, src: p.src ?? null })),
   }));
 }
@@ -76,9 +76,9 @@ function readProfile(db, key) {
     .map((r) => trimTail([r.d, r.kind, r.site, r.finding, r.next, r.note]));
   const monitorRows = rows(db, 'SELECT item, freq, last, next, note FROM monitor_rows WHERE profile_key = ? ORDER BY ord', key)
     .map((r) => trimTail([r.item, r.freq, r.last, r.next, r.note]));
-  const bleedRows = rows(db, 'SELECT d, kind, detail FROM bleed_rows WHERE profile_key = ? ORDER BY ord', key)
+  const bleedRows = rows(db, 'SELECT d, kind, detail FROM bleed_rows WHERE profile_key = ? ORDER BY d, ord', key)
     .map((r) => trimTail([r.d, r.kind, r.detail]));
-  const nutritionRows = rows(db, 'SELECT d, slot, amount, foods, symptoms, note FROM nutrition_rows WHERE profile_key = ? ORDER BY ord', key)
+  const nutritionRows = rows(db, 'SELECT d, slot, amount, foods, symptoms, note FROM nutrition_rows WHERE profile_key = ? ORDER BY d, ord', key)
     .map((r) => trimTail([r.d, r.slot, r.amount, r.foods, r.symptoms, r.note]));
   const pathRows = rows(db, "SELECT a, b FROM pathology_rows WHERE profile_key = ? AND kind = 'row' ORDER BY ord", key).map((r) => trimTail([r.a, r.b]));
   const pathGaps = rows(db, "SELECT a, b FROM pathology_rows WHERE profile_key = ? AND kind = 'gap' ORDER BY ord", key).map((r) => trimTail([r.a, r.b]));

@@ -1,10 +1,12 @@
-/* 写命令（M2 第二段）：四个入口对应「一天里最常记的四件事」。
+/* 写命令：五个入口对应「一天里最常记的五件事」。
  *
- * 为什么只有四个：
+ * 为什么只有五个：
  *   1. 服药记录 adherence_rows   —— 「今天吃了没」
  *   2. 不良事件 side_effect_rows —— 「今天有什么反应」
  *   3. 指标点   metric_points    —— 「这次化验多少」
  *   4. 自己的看法 viewpoints     —— 「我怎么想的」
+ *   5. 进食记录 nutrition_rows   —— 「这顿吃了什么、吃完怎么样」
+ *
  * 其它表（病理、危险度、手术、线序、剂量变更）属于"医生给的事实"，
  * 录入路径要走「资料上传 → 候选 → 逐条核对」，不能走随手填。所以本段不做。
  *
@@ -222,6 +224,39 @@ export function recordViewpoint(db, input = {}) {
   });
 }
 
+/* ---------------- ⑤ 进食记录 ---------------- */
+
+const NUTRITION_COLS = 'profile_key, d, slot, amount, foods, symptoms, note, ord';
+
+/**
+ * 记一笔进食：餐次、份量、吃了什么、吃完有什么症状（原话）。
+ * 不做热量换算、不做食材替换建议、不给食谱——表里就没有这些字段。
+ */
+export function recordNutrition(db, input = {}) {
+  const profile = assertSubject(db, input.profile);
+  const d = assertDate(input.date);
+  const slot = text(input.slot, '餐次', { required: true, max: 20 });
+  const amount = text(input.amount, '份量', { max: 40 });
+  const foods = text(input.foods, '吃了什么', { max: 200 });
+  const symptoms = text(input.symptoms, '症状', { max: 120 });
+  const note = text(input.note, '备注', { max: 300 });
+  if (!foods && !amount) throw new CommandError('FIELD_REQUIRED', '份量与吃了什么至少写一项');
+
+  return inTx(db, () => {
+    const prev = db.prepare(
+      `SELECT ${NUTRITION_COLS} FROM nutrition_rows
+       WHERE profile_key = ? AND d = ? AND slot = ? ORDER BY ord DESC LIMIT 1`
+    ).get(profile, d, slot);
+    if (prev && prev.amount === amount && prev.foods === foods && prev.symptoms === symptoms && prev.note === note) {
+      return { ok: true, status: 'unchanged', row: prev };
+    }
+    const ord = nextOrd(db, 'nutrition_rows', 'profile_key = ? AND d = ? AND slot = ?', [profile, d, slot]);
+    db.prepare(`INSERT INTO nutrition_rows (${NUTRITION_COLS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(profile, d, slot, amount, foods, symptoms, note, ord);
+    return { ok: true, status: prev ? 'superseded' : 'created', row: { profile_key: profile, d, slot, amount, foods, symptoms, note, ord } };
+  });
+}
+
 /* ---------------- 路由表 ----------------
  * server.js 只认这张表：加命令 = 加一行，不在 HTTP 层再写一遍分派。 */
 export const COMMANDS = {
@@ -229,4 +264,5 @@ export const COMMANDS = {
   '/api/side-effects': recordSideEffect,
   '/api/metric-points': recordMetricPoint,
   '/api/viewpoints': recordViewpoint,
+  '/api/nutrition': recordNutrition,
 };

@@ -91,6 +91,11 @@ const WHITELIST = [
     name: '开发版独有的写入入口',
     reason: '「记一次服药 / 记一次反应 / 记一条感受」只有开发版能落库；原型是 G2 已签认的冻结快照，不在快照上加按钮。剥掉这层按钮再比，其余结构必须逐字符相同。',
     apply: (s) => s.replace(/\n[ \t]*<div class="actions"><button class="primary" data-action="add-(?:adherence|side-effect|viewpoint)">[^<]*<\/button><\/div>/g, '')
+  },
+  {
+    name: '指标补录按钮改名',
+    reason: '原型里「＋ 手工补录一个值」挂在 add-meal 上（当时只有 toast）；开发版拆成独立的 add-metric 才会打开补录弹层。仅 action 名不同，按钮文案与位置一致。',
+    apply: (s) => s.replace(/data-action="add-metric"/g, 'data-action="add-meal"')
   }
 ];
 const whitelistHits = new Map();

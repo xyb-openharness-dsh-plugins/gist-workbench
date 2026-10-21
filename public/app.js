@@ -650,7 +650,7 @@ function vRecords() {
   /* 4) 指标检测 —— 与一图秀同一套卡片，翻面看参考区间 */
   const metricsTab = `<div class="notice">趋势只呈现记录，不代表疗效、复发或诊断判断。分级指标（水肿、乏力、腹泻、手足反应）只记级数，不做数值比较。</div>
     <div style="display:flex;gap:10px;margin-bottom:12px;flex-wrap:wrap">
-      <button class="primary" data-action="add-meal">＋ 手工补录一个值</button>
+      <button class="primary" data-action="add-metric">＋ 手工补录一个值</button>
       <button class="soft" data-action="go-timeline">去一图秀看趋势</button></div>
     ${groups.map((g) => `<div class="metric-group"><div class="metric-group-head"><h3>${esc(g.cat)}</h3><span>${g.codes.length} 项</span></div>
       <div class="metric-grid">${g.codes.map((k) => mcard(k, m[k])).join('')}</div></div>`).join('') || '<div class="empty"><h3>这个档案还没有指标记录</h3><p>导入一份化验单并核对，或手工补录一个值。</p></div>'}
@@ -1360,6 +1360,72 @@ function saveSideEffect() {
     .catch((e) => toast(`没能保存：${e.message}`));
 }
 
+function dlgMetric() {
+  const m = M();
+  /* 只列这个档案已经有记录的指标：没有记录时不在这里新建一条线，
+     避免一图秀多出没人认识的曲线（未定义指标服务端也会拒）。 */
+  const keys = Object.keys(m).filter((k) => m[k].points.length);
+  const opts = keys.map((k) => `<option value="${esc(k)}">${esc(m[k].name)}${m[k].unit ? `（${esc(m[k].unit)}）` : ''}${m[k].kind && m[k].kind !== 'numeric' ? ' · 分级' : ''}</option>`).join('');
+  openDialog('补录一个值', '这次检查的结果', `
+  <div class="cfg-block">
+    <label style="display:block;margin-bottom:10px">指标
+      <select id="mp-metric" style="display:block;width:100%;margin-top:6px">${opts || '<option value="">这个档案还没有指标</option>'}</select></label>
+    <label style="display:block;margin-bottom:10px">日期
+      <input id="mp-date" type="date" value="${todayISO()}" max="${todayISO()}" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block;margin-bottom:10px">数值 / 分级原文
+      <input id="mp-value" placeholder="数值指标填数字；分级指标照记录写，如 2 级" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block">来源（可选）
+      <input id="mp-src" placeholder="哪家医院 / 哪次化验" style="display:block;width:100%;margin-top:6px"></label>
+  </div>
+  <p class="small-note" style="margin-top:12px">补录只加一个点，不改历史点；同一天同一指标改了值会保留前一版。工作台<b>不判断这个值好不好、不据此给用药方向</b>。</p>`,
+  '<button class="soft" data-action="close">取消</button><button class="primary" data-action="save-metric">保存</button>');
+}
+
+function saveMetric() {
+  return postCommand('/api/metric-points', {
+    profile: state.profile,
+    metric: $('#mp-metric').value,
+    date: $('#mp-date').value,
+    value: $('#mp-value').value,
+    src: $('#mp-src').value
+  }).then((res) => { closeDialog(); return afterWrite('这个数值', res); })
+    .catch((e) => toast(`没能保存：${e.message}`));
+}
+
+function dlgNutrition() {
+  const slots = ['早餐', '上午加餐', '午餐', '下午加餐', '晚餐', '夜间加餐'];
+  openDialog('记一笔进食', '这一顿吃了什么', `
+  <div class="cfg-block">
+    <label style="display:block;margin-bottom:10px">日期
+      <input id="nu-date" type="date" value="${todayISO()}" max="${todayISO()}" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block;margin-bottom:10px">餐次
+      <select id="nu-slot" style="display:block;width:100%;margin-top:6px">${slots.map((s) => `<option>${s}</option>`).join('')}</select></label>
+    <label style="display:block;margin-bottom:10px">份量（按自己的说法，如半碗、一小块）
+      <input id="nu-amount" placeholder="半碗 / 一小块" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block;margin-bottom:10px">吃了什么
+      <input id="nu-foods" placeholder="小米粥、鸡蛋、青菜" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block;margin-bottom:10px">吃完有什么（腹胀 / 早饱 / 恶心，没有就写无）
+      <input id="nu-symptoms" value="无" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block">备注（可选）
+      <input id="nu-note" placeholder="吃得比平时少 / 饭后躺了一会儿" style="display:block;width:100%;margin-top:6px"></label>
+  </div>
+  <p class="small-note" style="margin-top:12px">只记份量、食物和你自己的感受；工作台<b>不做热量换算、不给食谱、不评价吃得够不够</b>。</p>`,
+  '<button class="soft" data-action="close">取消</button><button class="primary" data-action="save-nutrition">保存</button>');
+}
+
+function saveNutrition() {
+  return postCommand('/api/nutrition', {
+    profile: state.profile,
+    date: $('#nu-date').value,
+    slot: $('#nu-slot').value,
+    amount: $('#nu-amount').value,
+    foods: $('#nu-foods').value,
+    symptoms: $('#nu-symptoms').value,
+    note: $('#nu-note').value
+  }).then((res) => { closeDialog(); return afterWrite('这顿饭', res); })
+    .catch((e) => toast(`没能保存：${e.message}`));
+}
+
 function dlgExport() {
   const p = P();
   const md = ['# 复诊准备（演示导出）', '', `档案：${p.name}（${p.meta}）`, '', '## 事实区（已核对）', ...p.rhythm.map(r => `- ${r[0]}：${r[1]}（${r[2]}）`), '', '## 想问的事 / 我的看法（不是医生结论）', '- （按页面勾选结果导出；私密条目默认不含）', '', '> 本文件由工作台整理，不构成医疗建议。'].join('\n');
@@ -1505,10 +1571,12 @@ document.addEventListener('click', (e) => {
       render(); toast('已加入复诊准备的问题清单');
     },
     'add-adherence': dlgAdherence,
-    'add-meal': () => toast('原型内不落库；真实版在这里记一笔进食（餐次 / 份量 / 症状）'),
     'add-viewpoint': dlgViewpoint,
     'add-side-effect': dlgSideEffect,
+    'add-metric': dlgMetric,
+    'add-meal': dlgNutrition,
     'save-adherence': saveAdherence, 'save-viewpoint': saveViewpoint, 'save-side-effect': saveSideEffect,
+    'save-metric': saveMetric, 'save-nutrition': saveNutrition,
     'add-line': () => toast('新增治疗线需核对方案原件后建立'),
     'export-nutrition': () => toast('就诊展示：最近 10 条进食记录 + 体重趋势（演示）'),
     'export-review': dlgExport,

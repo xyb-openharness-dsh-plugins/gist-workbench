@@ -10,7 +10,7 @@ import { openDatabase, migrate, close } from '../dsh/store.js';
 import { seedDemo } from '../dsh/demo.js';
 import { getProfile } from '../dsh/readmodels.js';
 import {
-  recordAdherence, recordSideEffect, recordMetricPoint, recordViewpoint, COMMANDS, CommandError
+  recordAdherence, recordSideEffect, recordMetricPoint, recordViewpoint, recordNutrition, COMMANDS, CommandError
 } from '../dsh/commands.js';
 
 const TODAY = () => new Date().toISOString().slice(0, 10);
@@ -131,9 +131,31 @@ test('⑦ 看法：只存原话，返回里没有任何评估字段（契约① 
   close(db);
 });
 
-test('⑧ 命令表与路由一致：四条命令都是函数，路径以 /api/ 开头', () => {
+test('⑧ 进食：按「日期 + 餐次」幂等，改了内容追加版本；份量与食物至少一项', () => {
+  const db = freshDb();
+  const d = YDAY();
+  const a = recordNutrition(db, { profile: 'A', date: d, slot: '早餐', amount: '半碗', foods: '小米粥、鸡蛋' });
+  assert.equal(a.status, 'created');
+  assert.equal(recordNutrition(db, { profile: 'A', date: d, slot: '早餐', amount: '半碗', foods: '小米粥、鸡蛋' }).status, 'unchanged');
+
+  const b = recordNutrition(db, { profile: 'A', date: d, slot: '早餐', amount: '半碗', foods: '小米粥、鸡蛋', symptoms: '吃完腹胀' });
+  assert.equal(b.status, 'superseded', '同一天同一餐改了内容＝更正，旧行保留');
+
+  assert.throws(() => recordNutrition(db, { profile: 'A', date: d, slot: '加餐' }),
+    (e) => e.code === 'FIELD_REQUIRED', '份量与食物都空要拒绝');
+
+  const p = getProfile(db, 'A');
+  const hit = p.nutrition.rows.filter((r) => r[0] === d && r[1] === '早餐');
+  assert.equal(hit.length, 2, '两个版本都要留着');
+  assert.equal(hit.at(-1)[4], '吃完腹胀');
+  close(db);
+});
+
+test('⑨ 命令表与路由一致：五条命令都是函数，路径以 /api/ 开头', () => {
   const paths = Object.keys(COMMANDS);
-  assert.deepEqual(paths.sort(), ['/api/adherence', '/api/metric-points', '/api/side-effects', '/api/viewpoints']);
+  assert.deepEqual(paths.sort(), [
+    '/api/adherence', '/api/metric-points', '/api/nutrition', '/api/side-effects', '/api/viewpoints'
+  ]);
   for (const p of paths) {
     assert.ok(p.startsWith('/api/'), `${p} 必须挂在 /api/ 下`);
     assert.equal(typeof COMMANDS[p], 'function');
