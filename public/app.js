@@ -813,6 +813,7 @@ function vMeds() {
     ${se.length ? `<div class="table-wrap"><table><thead><tr><th>日期</th><th>表现</th><th>分级</th><th>处理</th><th>备注</th></tr></thead><tbody>
       ${se.map(r => `<tr><td><b>${esc(r[0])}</b></td><td>${esc(r[1])}</td><td>${pill(esc(r[2]), /3|4/.test(r[2]) ? 'red' : /2/.test(r[2]) ? 'yellow' : 'grey')}</td><td>${esc(r[3])}</td><td><small>${esc(r[4])}</small></td></tr>`).join('')}</tbody></table></div>`
       : `<div class="empty"><h3>还没有副作用记录</h3><p>没有记录不代表没有发生；愿意的时候按日期补一条即可。</p></div>`}
+    <div class="actions"><button class="primary" data-action="add-side-effect">记一次反应</button></div>
     <div class="section-title"><h2>分级趋势</h2><span class="source-link">只画节点，不连线</span></div>
     <div class="card"><div class="metric-grid">${gradeMetrics.map(k => mcard(k, m[k])).join('') || '<p>本档案暂无分级指标。</p>'}</div>
     <p class="small-note">分级（1 级 / 2 级 / 3 级）是分类值，没有数值轴；连成折线会造出"副作用在好转"的假趋势，所以只画节点。处理方式与是否减量由医生决定。</p></div>
@@ -1329,6 +1330,36 @@ function saveViewpoint() {
     .catch((e) => toast(`没能保存：${e.message}`));
 }
 
+function dlgSideEffect() {
+  openDialog('记一次反应', '这几天有什么反应', `
+  <div class="cfg-block">
+    <label style="display:block;margin-bottom:10px">日期
+      <input id="se-date" type="date" value="${todayISO()}" max="${todayISO()}" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block;margin-bottom:10px">表现（照自己的说法写，如眼睑水肿、乏力、腹泻）
+      <input id="se-term" placeholder="哪里不舒服、什么样" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block;margin-bottom:10px">分级（照医生或随访记录原文，没有就留空）
+      <input id="se-grade" placeholder="1 级 / 2 级 / 记录里怎么写就怎么抄" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block;margin-bottom:10px">当时的处理（继续 / 减量 / 暂停 / 对症，照实际写）
+      <input id="se-action" placeholder="继续原剂量、加用止泻药…" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block">备注（可选）
+      <input id="se-note" placeholder="持续几天、有没有影响吃饭睡觉" style="display:block;width:100%;margin-top:6px"></label>
+  </div>
+  <p class="small-note" style="margin-top:12px">分级按医生写的抄，工作台<b>不替你判断严重程度、不建议该不该停药</b>；出现呕血、黑便、突发剧烈腹痛、持续高热请直接走急诊流程。</p>`,
+  '<button class="soft" data-action="close">取消</button><button class="primary" data-action="save-side-effect">保存</button>');
+}
+
+function saveSideEffect() {
+  return postCommand('/api/side-effects', {
+    profile: state.profile,
+    date: $('#se-date').value,
+    term: $('#se-term').value,
+    grade: $('#se-grade').value,
+    action: $('#se-action').value,
+    note: $('#se-note').value
+  }).then((res) => { closeDialog(); return afterWrite('这条反应', res); })
+    .catch((e) => toast(`没能保存：${e.message}`));
+}
+
 function dlgExport() {
   const p = P();
   const md = ['# 复诊准备（演示导出）', '', `档案：${p.name}（${p.meta}）`, '', '## 事实区（已核对）', ...p.rhythm.map(r => `- ${r[0]}：${r[1]}（${r[2]}）`), '', '## 想问的事 / 我的看法（不是医生结论）', '- （按页面勾选结果导出；私密条目默认不含）', '', '> 本文件由工作台整理，不构成医疗建议。'].join('\n');
@@ -1476,7 +1507,8 @@ document.addEventListener('click', (e) => {
     'add-adherence': dlgAdherence,
     'add-meal': () => toast('原型内不落库；真实版在这里记一笔进食（餐次 / 份量 / 症状）'),
     'add-viewpoint': dlgViewpoint,
-    'save-adherence': saveAdherence, 'save-viewpoint': saveViewpoint,
+    'add-side-effect': dlgSideEffect,
+    'save-adherence': saveAdherence, 'save-viewpoint': saveViewpoint, 'save-side-effect': saveSideEffect,
     'add-line': () => toast('新增治疗线需核对方案原件后建立'),
     'export-nutrition': () => toast('就诊展示：最近 10 条进食记录 + 体重趋势（演示）'),
     'export-review': dlgExport,
