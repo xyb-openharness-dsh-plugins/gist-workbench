@@ -1,0 +1,19 @@
+{
+  "packageName": "@xyb-community/gist-workbench",
+  "title": "小吉宝 GistPal 胃肠间质瘤工作台",
+  "repository": "https://github.com/xyb-openharness-dsh-plugins/gist-workbench",
+  "description": "本机优先的胃肠间质瘤病理与危险度档案、靶向治疗线序、复查影像与用药副作用记录工作台",
+  "slug": "gist",
+  "targetUsers": "胃肠间质瘤（GIST）患者及家属照护者；术后辅助治疗期、晚期靶向治疗期与长期随访期人群",
+  "scenario": "病理与基因型档案（部位/大小/核分裂/CD117/DOG1/KIT/PDGFRA）、危险度分级记录、手术与术前术后靶向路径、伊马替尼与后线TKI用药及副作用、腹部影像复查节奏、消化道出血与症状记录、复诊准备",
+  "completion": "得到来源可追溯、可核对的个人病程档案：病理与危险度依据、治疗路径与线序、用药与副作用趋势、影像复查记录、就诊准备材料；候选信息经用户核对入档，不提供诊断与治疗建议",
+  "coreFlow": [
+    "选择本机资料目录并导入病理、基因检测、影像与出院记录",
+    "核对候选信息，建立病理与危险度档案",
+    "记录手术、靶向治疗路径与用药副作用",
+    "整理复查影像与指标趋势",
+    "生成复诊准备材料"
+  ],
+  "layoutMode": "business-first",
+  "businessWidth": 0.65
+}

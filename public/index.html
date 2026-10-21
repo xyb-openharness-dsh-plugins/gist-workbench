@@ -1,0 +1,92 @@
+<!doctype html>
+<!-- 开发版骨架 —— 结构源自 prototypes/v0.2/index.html（定稿原型，勿改那份）。
+     与原型相比的改动：
+     1) 去掉对 demo-data.js 的脚本引用：数据改由后端 GET /api/bootstrap 提供（见 app.js 的 loadBootstrap）；
+        app.js 加 defer，且仍为普通脚本（非 module），parity 测试要在 Node 里用 new Function(src)() 跑它。
+     2) 补 <meta name="robots" content="noindex">，去掉顶部「原型」提示条。
+     3) 标题里「原型」改为「开发版」。
+     4) 顶栏换成三段式（左品牌+版本 chip / 中一句状态说明 / 右主操作组），AI 面板加可拖分隔条
+        （#agent-splitter、#agent-hide、#agent-label），结构与 prompts/DSH-WORKBENCH-TOP-BAR.md 一致。
+     其余 DOM 结构与全部 id（#nav / #main / #breadcrumb / #profile-name / #profile-meta / #profile-avatar /
+     #work-grid / #agent-dock / #agent-dot / #agent-body / #agent-toggle / #agent-sizes 三档按钮 /
+     #dialog / #toast / #font-toggle / #ver-chip）与原型逐一保持一致，app.js 依赖它们。 -->
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>小吉宝 GistPal · 胃肠间质瘤工作台 v0.1.0</title>
+<!-- 内联 favicon：原型是 file:// 或单目录静态托管，不给 favicon.ico 会在控制台留一条 404 -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b5762a'/%3E%3Ctext x='16' y='23' font-size='19' font-family='PingFang SC,Helvetica,sans-serif' font-weight='700' fill='%23fff' text-anchor='middle'%3E%E5%90%89%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+<!-- 顶栏三段式与 AI 面板分栏是开发版新增（原型没有），单独成文件 shell.css，避免打乱 style.css 与定稿原型的逐行对齐 -->
+<link rel="stylesheet" href="shell.css">
+</head>
+<body>
+<a class="skip" href="#main">跳到主要内容</a>
+<div class="workspace">
+  <aside class="sidebar" aria-label="小吉宝业务导航">
+    <div class="brand no-mark"><div><strong>小吉宝</strong><span>GistPal · 靶向与复查一起看清</span></div></div>
+    <button class="profile profile-btn" id="profile-btn" data-action="profiles" aria-label="切换演示档案，当前为顾文琴">
+      <div class="avatar" id="profile-avatar" aria-hidden="true">顾</div>
+      <div><b id="profile-name">顾文琴的资料</b><span id="profile-meta">58 岁 · 胃体 GIST 高危 · 术后辅助</span></div>
+      <span class="profile-caret" aria-hidden="true">⌄</span>
+    </button>
+    <nav id="nav" aria-label="一级导航"></nav>
+    <div class="sidebar-bottom"><span class="eyebrow">小 X 宝家族</span><p>把危险度、吃药<br>和复查放在一张表上。</p><button class="text-button" data-action="help">操作说明 ↗</button></div>
+  </aside>
+  <div class="work-area">
+    <!-- 顶栏三段式（结构参照 prompts/DSH-WORKBENCH-TOP-BAR.md）：
+         左＝定位（面包屑「我在哪」+ 版本 chip「这是哪版」，元信息走中性灰）；
+         中＝一句状态说明（flex:1 吃掉空白，只说当前能做什么 / 不会发生什么）；
+         右＝主操作组（margin-left:auto 贴右缘，AI 对话是这一条唯一的强色块）。 -->
+    <header class="topbar">
+      <div class="tb-brand">
+        <span class="tb-name">小吉宝工作台</span>
+        <span class="breadcrumb"><span>/</span><b id="breadcrumb">看板</b></span>
+        <button class="tb-ver" id="ver-chip" data-action="about" aria-label="关于小吉宝：查看版本号与构建信息">v0.1.0</button>
+      </div>
+      <p class="tb-hint" id="top-hint">点「AI 对话」打开右侧会话面板；× 只是收起，不会结束会话。</p>
+      <div class="tb-actions">
+        <button class="status" id="ready-store" data-action="open-store" aria-label="资料目录：已激活"><i></i><span>资料目录</span><b>已激活</b></button>
+        <button data-action="settings" aria-label="打开设置：工作区目录、文档解析、临床数据库">设置</button>
+        <button id="font-toggle" aria-pressed="false" title="切换大字">大字 Aa</button>
+        <button class="tb-agent" id="agent-toggle" data-action="agent" aria-expanded="false" aria-label="AI 对话：打开右侧会话面板"><i class="grey"></i><span id="agent-label">AI 对话</span></button>
+        <button class="icon-button" id="agent-hide" data-action="agent" aria-label="收起 AI 对话面板" title="收起（不会结束会话）" hidden>×</button>
+      </div>
+    </header>
+    <div class="work-grid" id="work-grid">
+      <main id="main" tabindex="-1"></main>
+      <!-- 分隔条：只有面板展开时可拖/可 Tab；鼠标拖动或 ←/→ 调整 25%–45%，松手记忆 -->
+      <div class="agent-splitter" id="agent-splitter" role="separator" aria-orientation="vertical"
+           aria-label="调整 AI 会话面板宽度" aria-valuemin="25" aria-valuemax="45" aria-valuenow="35"
+           aria-valuetext="会话面板占 35%" title="拖动调整宽度（25%–45%）" tabindex="0" hidden></div>
+      <aside class="agent-dock" id="agent-dock" aria-label="AI 原生会话面板" hidden>
+        <div class="agent-head">
+          <span class="dot" id="agent-dot"></span><b>AI 对话</b>
+          <div class="spacer"></div>
+          <div class="agent-sizes" role="group" aria-label="面板宽度">
+            <button data-action="agent-size" data-size="narrow" aria-pressed="false" title="窄">窄</button>
+            <button data-action="agent-size" data-size="std" aria-pressed="true" title="标准">标准</button>
+            <button data-action="agent-size" data-size="wide" aria-pressed="false" title="宽">宽</button>
+          </div>
+          <button class="icon-button" data-action="agent" aria-label="隐藏 AI 对话面板" title="隐藏">×</button>
+        </div>
+        <div class="agent-body" id="agent-body"></div>
+        <div class="agent-foot">
+          <button class="primary" data-action="agent-build">整理本页要点</button>
+          <button data-action="agent-demo">模拟回复自检</button>
+        </div>
+      </aside>
+    </div>
+    <footer class="footer">小吉宝 · 与胃肠间质瘤患者和照护者一起整理、理解、准备沟通 <span class="ver-line"><b id="app-version">v0.1.0</b><em id="app-build">2026-10-21</em></span></footer>
+  </div>
+</div>
+<dialog id="dialog" aria-labelledby="dialog-title">
+  <div class="dialog-head"><div><span class="eyebrow" id="dialog-eyebrow">小吉宝</span><h2 id="dialog-title"></h2></div><button class="icon-button" data-action="close" aria-label="关闭弹窗">×</button></div>
+  <div id="dialog-body" class="dialog-body"></div>
+  <div id="dialog-foot" class="dialog-foot"></div>
+</dialog>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="app.js" defer></script>
+</body></html>

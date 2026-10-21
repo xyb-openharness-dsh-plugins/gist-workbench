@@ -1,0 +1,3 @@
+- insert:
+    - id: gist-main
+      name: "@xyb-community/gist-workbench"

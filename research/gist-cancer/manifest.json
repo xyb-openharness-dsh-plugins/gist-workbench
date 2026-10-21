@@ -1,0 +1,58 @@
+{
+  "disease": "gist-cancer",
+  "year": 2026,
+  "generated_at": "2026-10-21T05:06:39.373Z",
+  "total_records": 16,
+  "raw_studies": 16,
+  "by_status": {
+    "NOT_YET_RECRUITING": 3,
+    "RECRUITING": 12,
+    "ENROLLING_BY_INVITATION": 1
+  },
+  "by_category": {
+    "disease-specific": 16
+  },
+  "china_sites": 8,
+  "sources": {
+    "ClinicalTrials": {
+      "included": true,
+      "count": 16,
+      "method": "ClinicalTrials.gov API v2, query.cond 三组并集（gastrointestinal stromal tumor / gastrointestinal stromal tumour / GIST）, AREA[StudyFirstPostDate]RANGE[2026-01-01,MAX] AND AREA[StudyType]INTERVENTIONAL, 本地疾病术语过滤",
+      "raw_by_query": {
+        "gastrointestinal stromal tumor": 14,
+        "gastrointestinal stromal tumour": 14,
+        "GIST": 16
+      }
+    },
+    "ChinaDrugTrials": {
+      "included": false,
+      "count": 0,
+      "note": "本轮未采集，覆盖未知"
+    },
+    "ChiCTR": {
+      "included": false,
+      "count": 0,
+      "note": "本轮未采集，覆盖未知"
+    }
+  },
+  "files": {
+    "gist_cancer_trials_2026": {
+      "sqlite": {
+        "sha256": "cf2c42e3d9784618dc0bd0f36b0be8f8b8680c624dbaeea4d2ce4d25d0b66a17",
+        "bytes": 126976
+      },
+      "jsonl": {
+        "lines": 16
+      }
+    }
+  },
+  "limitations": [
+    "年份口径=首次公示在 2026 年，不是试验启动时间或结果发表年份",
+    "仅干预性研究；观察性研究未采集",
+    "ClinicalTrials.gov 覆盖仅限所记录查询词、日期与术语过滤；不代表全部全球注册库",
+    "ChinaDrugTrials 与 ChiCTR 未采集，未命中不能解释为不存在",
+    "登记状态不是入组资格；不构成方案推荐",
+    "篮式研究（category=basket）同时归入软组织肉瘤等其它包，跨包相加会重复计数",
+    "FAQ：GIST 与 leiomyosarcoma / schwannoma 属不同病种，本包不合并"
+  ]
+}

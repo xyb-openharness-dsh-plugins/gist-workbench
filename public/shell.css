@@ -1,0 +1,73 @@
+/* 开发版外壳（顶栏三段式 + AI 面板分栏）——原型 prototypes/v0.2/ 里没有这些规则。
+ *
+ * 为什么单独一个文件：public/style.css 与定稿原型逐行对齐（test/ui-parity.test.mjs ④ 比对），
+ * 外壳规则塞进去会打破对齐，日后也分不清"哪些是原型就有的、哪些是开发版新增的"。
+ *
+ * 顶栏结构参照 prompts/DSH-WORKBENCH-TOP-BAR.md（三段式，职责不许混）：
+ *   左 .tb-brand   = 定位：品牌 + 面包屑「我在哪」+ 版本 chip「这是哪版」（元信息，中性灰）
+ *   中 .tb-hint    = 一句状态说明，flex:1 吃掉中间空白，让右侧按钮自然贴边
+ *   右 .tb-actions = 主操作组，margin-left:auto 钉右缘；「AI 对话」是这一条唯一的强色块
+ *
+ * 色带克制：顶栏底中性浅灰（略带品牌色相），chip 与说明都是中性灰，只有主按钮用品牌主色。
+ * 字号：品牌/说明/版本 chip 不随大字模式放大（元信息不抢空间）。
+ *
+ * 面板宽度：--agent-w 由 app.js 按 state.agentRatio（25%–45%，来源 lib/layout.js）换算成像素写入，
+ * 这里只负责用它排版。分隔条 .agent-splitter 是 10px 的可拖/可聚焦窄条。
+ */
+
+/* ---------- 顶栏 ---------- */
+.topbar{background:#f4f7fb;border-bottom:1px solid var(--line);padding-block:8px;flex-wrap:wrap;
+  /* macOS 窗口按钮避让：宿主给了间隙变量就用它，没有就退回普通内边距 */
+  padding-inline-start:max(24px, var(--dsh-frame-leading-clearance, 24px))}
+.tb-brand{display:flex;align-items:center;gap:8px;min-width:0;flex:0 0 auto}
+.tb-name{font-size:12.5px;font-weight:700;color:var(--ink);letter-spacing:.1px;white-space:nowrap}
+.tb-brand .breadcrumb{font-size:12px;color:var(--muted)}
+.tb-ver{min-height:auto;padding:1px 8px;border:1px solid var(--line);border-radius:999px;background:#eef2f7;
+  color:var(--muted);font-size:11px;font-weight:500;letter-spacing:.1px;font-variant-numeric:tabular-nums}
+.tb-ver:hover{background:#e6ecf4;color:var(--ink-2)}
+.tb-hint{flex:1;min-width:200px;font-size:11.5px;color:var(--muted);line-height:1.5;margin:0}
+.tb-actions{display:flex;align-items:center;gap:6px;flex:0 0 auto;margin-left:auto;flex-wrap:nowrap}
+.tb-actions button{min-height:32px;padding:5px 12px;border-radius:999px;font-size:12px}
+.tb-actions .status{min-height:32px;padding:4px 11px}
+.tb-agent{background:var(--violet);border-color:var(--violet);color:#fff;font-weight:600;
+  display:inline-flex;align-items:center;gap:6px}
+.tb-agent:hover{background:var(--violet-deep);border-color:var(--violet-deep);color:#fff}
+.tb-agent:disabled{background:#eef2f7;border-color:var(--line);color:var(--muted)}
+.tb-agent i{width:6px;height:6px;border-radius:50%;flex:0 0 auto;background:rgba(255,255,255,.55)}
+.tb-agent i.grey{background:rgba(255,255,255,.55)}
+.tb-agent i.on{background:#fff}
+#agent-hide{min-height:32px;width:32px;height:32px;padding:0;font-size:17px;border-radius:50%;display:grid;place-items:center}
+/* 窄容器：先牺牲说明文字，再收起次级按钮的文字；按钮整组换行、不被拆碎 */
+@media(max-width:1240px){.tb-hint{display:none}}
+@media(max-width:960px){.tb-actions .status span,.tb-actions .status b{display:none}}
+
+/* 页脚贴底：内容短时不要把页脚顶在中间、下面留一块空白（原型是整页演示，没这问题；
+   开发版页脚是常驻信息条，必须压在工作区底部）。 */
+.work-area{min-height:100%}
+.work-area .work-grid{flex:1 1 auto;align-content:start}
+
+/* ---------- 分栏：业务区 | 分隔条 | 会话面板 ----------
+   style.css 里 .work-grid 是两列（第二列 0 / 380 / 500 写死），这里改成三列并用 --agent-w。
+   覆盖写在本文件（后加载），所以不用改与原型逐行对齐的 style.css。 */
+.work-grid{grid-template-columns:minmax(0,1fr) 0 0}
+.work-grid.agent-open{grid-template-columns:minmax(0,1fr) 10px var(--agent-w,380px)}
+/* 拖动过程中关掉过渡，否则面板"追不上"指针 */
+.work-grid.agent-dragging{transition:none}
+body.agent-dragging{cursor:col-resize;user-select:none}
+body.agent-dragging *{cursor:col-resize !important}
+
+.agent-splitter{position:relative;align-self:stretch;border-radius:6px;cursor:col-resize;
+  display:flex;align-items:center;justify-content:center;background:none;touch-action:none}
+.agent-splitter::before{content:'';width:3px;height:44px;border-radius:2px;background:#c8d6e5;transition:background .16s,height .16s}
+.agent-splitter:hover::before{background:#8fa9c4;height:110px}
+.agent-splitter:focus-visible{outline:3px solid var(--violet-deep);outline-offset:-1px}
+.agent-splitter[aria-valuenow]:active::before{background:var(--violet)}
+
+/* 面板本体：宽度由 --agent-w 决定，最小宽度兜住内容不挤成竖排 */
+.agent-dock{min-width:260px}
+@media(max-width:1100px){
+  /* 窄容器下不并排：面板落到业务区下面，分隔条隐藏（拖宽没有意义） */
+  .work-grid.agent-open{grid-template-columns:minmax(0,1fr)}
+  .agent-splitter{display:none}
+  .agent-dock{min-width:0}
+}

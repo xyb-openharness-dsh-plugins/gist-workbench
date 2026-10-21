@@ -1,0 +1,67 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>小吉宝 GistPal · 胃肠间质瘤工作台原型 v0.1.0</title>
+<!-- 内联 favicon：原型是 file:// 或单目录静态托管，不给 favicon.ico 会在控制台留一条 404 -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b5762a'/%3E%3Ctext x='16' y='23' font-size='19' font-family='PingFang SC,Helvetica,sans-serif' font-weight='700' fill='%23fff' text-anchor='middle'%3E%E5%90%89%3C/text%3E%3C/svg%3E">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<a class="skip" href="#main">跳到主要内容</a>
+<div class="prototype-bar"><span><b>交互原型 v0.1.0</b> · 全部为模拟资料（临床试验列表为真实登记摘录）</span><span>仅本页演示 · 刷新重置 · 未接入 DSH / AI</span></div>
+<div class="workspace">
+  <aside class="sidebar" aria-label="小吉宝业务导航">
+    <div class="brand no-mark"><div><strong>小吉宝</strong><span>GistPal · 靶向与复查一起看清</span></div></div>
+    <button class="profile profile-btn" id="profile-btn" data-action="profiles" aria-label="切换演示档案，当前为顾文琴">
+      <div class="avatar" id="profile-avatar" aria-hidden="true">顾</div>
+      <div><b id="profile-name">顾文琴的资料</b><span id="profile-meta">58 岁 · 胃体 GIST 高危 · 术后辅助</span></div>
+      <span class="profile-caret" aria-hidden="true">⌄</span>
+    </button>
+    <nav id="nav" aria-label="一级导航"></nav>
+    <div class="sidebar-bottom"><span class="eyebrow">小 X 宝家族</span><p>把危险度、吃药<br>和复查放在一张表上。</p><button class="text-button" data-action="help">原型操作说明 ↗</button></div>
+  </aside>
+  <div class="work-area">
+    <header class="topbar">
+      <div class="breadcrumb">小吉宝工作台 <span>/</span> <b id="breadcrumb">看板</b></div>
+      <div class="top-actions">
+        <button class="status" id="ready-store" data-action="open-store" aria-label="资料目录：已激活"><i></i><span>资料目录</span><b>已激活</b></button>
+        <button class="status" id="agent-toggle" data-action="agent" aria-expanded="false" aria-label="AI 对话：点击打开右侧原生会话面板"><i class="grey"></i><span>AI 对话</span><b id="agent-state">未进入激活</b></button>
+        <button data-action="settings" aria-label="打开设置：工作区目录、文档解析、临床数据库">设置</button>
+        <button id="font-toggle" aria-pressed="false" title="切换大字">大字 Aa</button>
+        <button class="ver-chip" id="ver-chip" data-action="about" aria-label="关于小吉宝：查看版本号与构建信息">v0.1.0</button>
+      </div>
+    </header>
+    <div class="work-grid" id="work-grid">
+      <main id="main" tabindex="-1"></main>
+      <aside class="agent-dock" id="agent-dock" aria-label="AI 原生会话面板" hidden>
+        <div class="agent-head">
+          <span class="dot" id="agent-dot"></span><b>AI 对话</b>
+          <div class="spacer"></div>
+          <div class="agent-sizes" role="group" aria-label="面板宽度">
+            <button data-action="agent-size" data-size="narrow" aria-pressed="false" title="窄">窄</button>
+            <button data-action="agent-size" data-size="std" aria-pressed="true" title="标准">标准</button>
+            <button data-action="agent-size" data-size="wide" aria-pressed="false" title="宽">宽</button>
+          </div>
+          <button class="icon-button" data-action="agent" aria-label="隐藏 AI 对话面板" title="隐藏">×</button>
+        </div>
+        <div class="agent-body" id="agent-body"></div>
+        <div class="agent-foot">
+          <button class="primary" data-action="agent-build">整理本页要点</button>
+          <button data-action="agent-demo">模拟回复自检</button>
+        </div>
+      </aside>
+    </div>
+    <footer class="footer">小吉宝 · 与胃肠间质瘤患者和照护者一起整理、理解、准备沟通 <span class="ver-line"><b id="app-version">v0.1.0</b><em id="app-build">2026-10-21</em></span></footer>
+  </div>
+</div>
+<dialog id="dialog" aria-labelledby="dialog-title">
+  <div class="dialog-head"><div><span class="eyebrow" id="dialog-eyebrow">小吉宝</span><h2 id="dialog-title"></h2></div><button class="icon-button" data-action="close" aria-label="关闭弹窗">×</button></div>
+  <div id="dialog-body" class="dialog-body"></div>
+  <div id="dialog-foot" class="dialog-foot"></div>
+</dialog>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="demo-data.js"></script>
+<script src="app.js"></script>
+</body></html>
