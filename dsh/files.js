@@ -5,6 +5,9 @@
  * 2. 文件名只保留基名，路径分隔符、控制字符、超长名一律清理——导入的是别人给的文件，
  *    文件名里带什么都不能变成路径。
  *
+ * 状态语义：刚导入的行是「待解析」——解析成功才变「待核对」（有候选等你逐条确认），
+ * 失败变「解析失败」（原件留着可重试）。导入本身**不产生候选**。
+ *
  * 原件语义：导入时**复制**一份到 imports/，不改动用户原来那个文件；
  * 内容相同（sha256 前 12 位相同）视为同一份，不重复入库、不重置解析状态（契约② 的思路）。
  */
@@ -74,7 +77,7 @@ export function saveImport(db, workspace, input = {}) {
 
   const ord = db.prepare('SELECT COALESCE(MAX(ord), 0) + 1 AS n FROM documents WHERE profile_key = ?').get(profile).n;
   db.prepare('INSERT INTO documents (profile_key, id, name, date, type, status, ord) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .run(profile, id, name, today(), type, '待核对', ord);
+    .run(profile, id, name, today(), type, '待解析', ord);
 
   return { ok: true, status: 'created', id, name, path: file, size: bytes.length };
 }

@@ -39,7 +39,7 @@
 | 原件导入（原始字节 + sha256 去重 + 落 `imports/`） | ✅ | `dsh/files.js`、`test/files.test.mjs` 5/5；e2e：`imports/` 内容与源文件一致、重复导入 `unchanged` |
 | Markdown 导出（`exports/日期-种类.md`，同名覆盖） | ✅ | e2e：`exports/2026-10-21-复诊准备.md` 生成；`test/files.test.mjs` 覆盖重复导出 |
 | 候选逐条核对（只改审核状态，不动事实表） | ✅ | e2e：接受后 `bootstrap.candidates` 状态转 `accepted`；`test/server.test.mjs` 10/10 |
-| 上传后自动解析成候选 | ⬜ | 依赖 MinerU 通道（`docs/MINERU.md`）；当前导入只落原件 + 一条待核对 `documents` 行 |
+| 上传后解析成候选（MinerU 云端） | ✅ | `dsh/mineru.js` + `dsh/gistparse.js` + `dsh/parse.js`；`test/mineru.test.mjs` 8/8、`test/parse.test.mjs` 8/8、`test/gistparse.test.mjs` 12/12；真机实测 1 页 PDF → 18.8s → 13 条候选全对 |
 
 ## M3 · 装机与实测（未开始）
 
@@ -62,8 +62,9 @@
 
 1. 写命令五个入口都已接前端；仍缺「删除/撤销一条记错的记录」的入口（契约② 决定不做覆盖式删除，
    要撤销只能再记一条更正，页面上还没有这条路）。
-2. 上传后的**解析**未接：原件导入、候选核对、导出三条通路已通，但「把 PDF 变成候选字段」这一步仍是空档——
-   现在导入只产生一条 `待核对` 的 `documents` 行，候选要靠手工补录或演示数据。
+2. 解析只覆盖「病理 / 化验」两类报告的词表（部位、大小、核分裂、切缘、破裂、CD117/DOG1/KIT/PDGFRA/SDHB、
+   血红蛋白/白细胞/中性粒/血小板/ALT/AST/胆红素/肌酐/LDH/白蛋白/TSH/谷浓度 + 报告日期）。
+   影像报告只抽「最大径」这类数字，**不产影像结论**；扫描件 OCR 质量、双栏排版、多页报告未实测。
 3. 多档案切换：演示只有 A/B/C 三套（C = 术前靶向 · 未手术 · 危险度待定），切换是内存态，不落库。
 4. 临床试验自动更新：资料包是 2026-10-21 快照。
 5. 账号、同步、导出 PDF。

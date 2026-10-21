@@ -21,7 +21,7 @@ function fresh() {
   return { ws, db };
 }
 
-test('① 导入：原件复制进 imports/，库里多一行「待核对」', () => {
+test('① 导入：原件复制进 imports/，库里多一行「待解析」', () => {
   const { ws, db } = fresh();
   const bytes = Buffer.from('病理报告 胃肠间质瘤 核分裂象 5/50 HPF', 'utf8');
   const out = saveImport(db, ws, { profile: 'A', name: '病理报告.txt', type: '病理报告', bytes });
@@ -35,7 +35,7 @@ test('① 导入：原件复制进 imports/，库里多一行「待核对」', (
   const hit = p.docs.find((d) => d[0] === out.id);
   assert.ok(hit, '资料库里应能看到这份材料');
   assert.equal(hit[1], '病理报告.txt');
-  assert.equal(hit[4], '待核对', '导入后状态是待核对，不是已核对');
+  assert.equal(hit[4], '待解析', '导入后状态是待解析：解析成功才变待核对，导入本身不产候选');
   close(db);
 });
 

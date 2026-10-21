@@ -105,6 +105,51 @@
 | 404 | `CANDIDATE_NOT_FOUND` | 候选 id 不存在于该档案 |
 | 500 | `FILE_WRITE_FAILED` | 资料目录不可写（磁盘满 / 权限） |
 
+## 云端解析（MinerU）
+
+原件**不会因为你导入就上传**——出本机这一步必须由用户点「解析」，代码里没有任何自动触发路径。
+
+### 能力自检
+
+`GET /api/mineru` → `{ configured, source, masked }`
+
+- `source` 是 Token 的来源（`explicit` / `env:MINERU_TOKEN` / `.secrets/mineru.json`），`masked` 只露前 4 后 2；
+- **不回传 Token 本身**，也不在错误消息里出现整串；
+- 没配置时 `configured=false` 并带 `hint`，界面据此显示「解析不可用」，而不是假装能用。
+
+注意优先级是 **显式传入 > 环境变量 > 密钥文件**。机器上若残留一个旧的 `MINERU_TOKEN`，它会盖住 `.secrets/mineru.json` 里的新 key；设置页那行「来源：」就是用来发现这种情况的。
+
+### 解析一份材料
+
+`POST /api/parse`，JSON：`{ profile, id }`
+
+状态机（`documents.status`）：
+
+| 从 | 到 | 触发 |
+| --- | --- | --- |
+| `待解析` | `待核对` | 解析成功且抽到 ≥1 条候选 |
+| `待解析` / `解析失败` | `解析失败` | 云端失败 / 正文为空 / 一条字段都没认出 |
+| — | 「解析中」**不入库** | 由前端内存态表示；写进库会留下永远转圈的僵尸状态 |
+
+成功响应：`{ ok, status:'parsed', docId, candidates, pages, modelVersion }`。
+
+三条硬规则：
+
+1. **失败不产候选**：候选写入与状态翻转在同一个事务里，任一步失败整批回滚；
+2. **不静默降级**：云端失败不会退回本地正则凑一份——两套口径的数据没法比较；
+3. **候选永远只是候选**：只写 `candidate_fields`，不碰 `pathology_rows` / `metric_points`。
+
+非 PDF / 图片 / Office 直接拒绝（`NOT_PARSEABLE`），不白花一次额度——文本文件走本机手工补录。
+
+| HTTP | code | 场景 |
+| --- | --- | --- |
+| 400 | `NOT_PARSEABLE` `PROFILE_REQUIRED` | 格式不对 / 缺档案 |
+| 401 | `MINERU_UNAUTHORIZED` | Token 无效或过期 |
+| 404 | `DOC_NOT_FOUND` `DOC_FILE_MISSING` | 没有这份材料 / 原件不在 `imports/` |
+| 422 | `NO_CANDIDATE` | 解析完成但没认出任何可抄写的字段 |
+| 502 | `MINERU_*` `EMPTY_MARKDOWN` `PARSE_FAILED` | 上游失败；原件保留，可重试 |
+| 500 | `PARSE_WRITE_FAILED` | 候选写库失败（已回滚） |
+
 ## 错误码总表
 
 | HTTP | code | 场景 |

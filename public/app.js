@@ -186,7 +186,7 @@ let AGENT_PANE = { min: 0.25, max: 0.45, def: 0.35, step: 24, presets: { narrow:
 const AGENT_STORE_KEY = 'xyb-gist-agent-ratio';
 const state = { view: 'dashboard', profile: 'A', agentPhase: 'idle', agentSize: 'std', agentRatio: AGENT_PANE.def, sel: ['hgb', 'wt', 'fatigue'],
   range: 'all', zoom: 100, toggles: { treatment: true, keypoints: true }, pin: null, saved: [], sub: {},
-  query: '', parsing: false, parseError: false, loaded: {}, parsingName: '', lastUpload: null, uploads: 0 };
+  query: '', parsing: false, parseError: false, loaded: {}, parsingName: '', lastUpload: null, uploads: 0, mineru: null };
 /* 换档案后的默认选择必须与初始状态同构：两条数值线（血红蛋白 / 体重）+ 第一条分级指标。
    只挑数值会把副作用丢掉，一图秀就退化成两条线。 */
 const defaultSel = (k) => {
@@ -536,7 +536,7 @@ function imagingCard(p) {
 const fmtSize = (n) => (!n ? '' : n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const DOC_TYPES = ['病理报告', '基因检测', '影像报告', '化验单', '手术记录', '门诊记录', '其他'];
-const DOC_PILL = { 已解析: 'green', 已入库: 'green', 待核对: 'yellow', 解析失败: 'red' };
+const DOC_PILL = { 已解析: 'green', 已入库: 'green', 待核对: 'yellow', 待解析: 'violet', 解析失败: 'red' };
 const CAND_LABEL = { candidate: '待确认', accepted: '已接受' };
 
 function docsTable() {
@@ -549,16 +549,18 @@ function docsTable() {
       <td>${esc(d.date)}</td>
       <td>${esc(d.type)}</td>
       <td>${pill(d.status, DOC_PILL[d.status] || 'grey')}</td>
-      <td>${d.status === '解析失败'
-        ? '<button class="soft" data-action="retry">重试解析</button>'
+      <td>${d.status === '待解析' || d.status === '解析失败'
+        ? `<button class="soft" data-action="parse" data-doc="${esc(d.id)}">${d.status === '解析失败' ? '重试解析' : '解析这份材料'}</button>
+           <button class="source-link" data-action="source" data-doc="${esc(d.id)}">看原件</button>`
         : `<button class="source-link" data-action="source" data-doc="${esc(d.id)}">看原件</button>`}</td>
     </tr>`).join('')}
   </tbody></table></div>`;
 }
 
-/* 选文件：把原件**复制**进资料目录 imports/，库里记一行「待核对」。
+/* 选文件：把原件**复制**进资料目录 imports/，库里记一行「待解析」。
    相同的文件（内容 sha256 前 12 位一样）不重复导入、不重置解析状态。
-   原件本身不改、不移动；解析结果将来也只会进「候选」，不直接改事实表。 */
+   原件本身不改、不移动；解析结果是「候选」，不直接改事实表。
+   导入**不自动上传**——出本机这一步必须由用户点「解析」。 */
 function ingestFiles(list) {
   const files = Array.from(list || []);
   if (!files.length) return;
@@ -591,7 +593,7 @@ function ingestFiles(list) {
           render();
           toast(dup
             ? `导入 ${ok.length} 份，其中 ${dup} 份此前已存在（内容相同）；原件已复制到资料目录 imports/`
-            : `已导入 ${ok.length} 份材料；原件已复制到资料目录 imports/，解析结果先当候选`);
+            : `已导入 ${ok.length} 份材料；原件已复制到资料目录 imports/，点「解析」才会出本机`);
         })
         .catch(() => toast('已导入，但页面刷新失败；刷新一次即可看到'));
     })
@@ -1241,13 +1243,29 @@ function dlgProfiles() {
       <div><b>${esc(p.name)}的资料</b><p>${esc(p.meta)} · ${esc(p.headline)}</p></div><span class="profile-caret">${state.profile === k ? '当前' : '切换'}</span></button>`).join(''),
     '<button data-action="close">取消</button>');
 }
+/* 设置页那行 Token 状态：只显示来源与掩码，绝不回显整串。没拉到就明说没拉到。 */
+function mineruLine() {
+  const m = state.mineru;
+  if (!m) return '正在读取解析配置…';
+  if (!m.configured) return 'MINERU_TOKEN 未配置：解析功能不可用（导入与手工补录不受影响）';
+  return `MINERU_TOKEN 已配置（来源：${m.source}｜掩码：${m.masked}）`;
+}
+function loadMineruStatus() {
+  let p;
+  try { p = fetch(`${apiBase()}/api/mineru`); } catch (e) { return Promise.resolve(null); }
+  return Promise.resolve(p)
+    .then((r) => (r && r.ok !== false ? r.json() : null))
+    .then((j) => { state.mineru = j; return j; })
+    .catch(() => null);
+}
 function dlgSettings() {
   openDialog('小吉宝', '设置', `<div class="cfg-tabs" role="tablist">
   <button role="tab" aria-selected="true" data-action="cfg-tab" data-tab="ws">资料目录</button><button role="tab" aria-selected="false" data-action="cfg-tab" data-tab="parse">文档解析</button><button role="tab" aria-selected="false" data-action="cfg-tab" data-tab="kb">临床数据库</button></div>
   <div class="cfg-block" style="margin-top:16px" data-tab="ws"><h3>工作区资料目录</h3><div class="path-row"><code>~/Documents/GistPalWorkspace（演示值）</code><button class="soft">选择…</button></div>
   <p class="small-note">患者数据只存入你明确选择的目录；工作台不把资料上传云端。</p></div>
-  <div class="cfg-block" style="margin-top:12px" data-tab="parse" hidden><h3>文档解析（MinerU）</h3><div class="token-row"><code class="masked">MINERU_TOKEN 已配置（掩码：mr-****）</code></div>
-  <p class="small-note">Token 只存本机 .secrets/（mode 600）；解析结果永远是候选，核对后才入档。</p></div>
+  <div class="cfg-block" style="margin-top:12px" data-tab="parse" hidden><h3>文档解析（MinerU）</h3><div class="token-row"><code class="masked">${mineruLine()}</code></div>
+  <p class="small-note">Token 只从环境变量 <code>MINERU_TOKEN</code> 或本机 <code>.secrets/mineru.json</code>（mode 600）读，不进仓库、不进日志、不进发布包。</p>
+  <p class="small-note">解析会把<b>原件上传到 mineru.net</b>，必须由你在资料库里点「解析」才会发生；解析结果永远是候选，逐条核对后才入档。</p></div>
   <div class="cfg-block" style="margin-top:12px" data-tab="kb" hidden><h3>2026 临床数据库</h3><div class="path-row"><code>gist_cancer_trials_2026.sqlite · 16 条（演示）</code></div>
   <p class="small-note">离线快照；中国注册库未采集，覆盖未知。</p></div>`, '<button class="primary" data-action="close">完成</button>');
 }
@@ -1568,7 +1586,24 @@ document.addEventListener('click', (e) => {
       state.parseError = true; render();
       toast(d ? `「${d.name}」解析失败：未产生候选，原件保留，可重试` : '模拟解析失败：未产生候选，原件保留');
     },
-    retry: () => { state.parseError = false; toast('模拟重试完成；原件始终保留'); render(); },
+    retry: () => { state.parseError = false; toast('原件已保留；请点「解析这份材料」重试'); render(); },
+    /* 解析一份原件：出本机，必须用户显式确认。失败不产候选，原件保留，可重试。 */
+    parse: (el) => {
+      const d = DOCS[state.profile].find((x) => x.id === el.dataset.doc);
+      if (!d) return;
+      const ask = `解析「${d.name}」需要把这份原件上传到 mineru.net（第三方云服务），换回可抄写的文本。\n\n原件仍留在你的资料目录里，解析结果只会进「候选」，逐条核对后才入档。\n\n继续吗？`;
+      if (typeof window !== 'undefined' && typeof window.confirm === 'function' && !window.confirm(ask)) return;
+      toast(`正在解析「${d.name}」…首次通常 10–60 秒，期间别关页面`);
+      return postCommand('/api/parse', { profile: state.profile, id: d.id })
+        .then((res) => loadBootstrap().then((data) => {
+          buildData(data); render();
+          toast(`解析完成：新增 ${res.candidates} 条候选，去「整理草稿 / 核对」逐条看`);
+        }))
+        .catch((e) => loadBootstrap()
+          .then((data) => { buildData(data); render(); })
+          .catch(() => null)
+          .then(() => toast(`解析失败：${e.message}。原件还在，可以重试或手工补录`)));
+    },
     candidate: (el) => {
       const c = CANDS[state.profile].find((x) => x.id === el.dataset.id);
       if (!c) return;
@@ -1688,4 +1723,4 @@ function bootFail(err) {
     <p class="small-note">原因：${esc(why)}。请确认服务已启动（<code>/api/bootstrap</code> 可访问）后刷新页面；资料本身不会丢失。</p></div>`;
   if (typeof console !== 'undefined' && console.error) console.error('[gistpal] bootstrap 失败：', err);
 }
-const bootReady = loadBootstrap().then((data) => { buildData(data); init(); }).catch(bootFail);
+const bootReady = loadBootstrap().then((data) => { buildData(data); init(); loadMineruStatus(); }).catch(bootFail);

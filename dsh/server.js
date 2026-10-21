@@ -14,6 +14,8 @@ import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
 import { COMMANDS, CommandError } from './commands.js';
 import { saveExport, saveImport, MAX_IMPORT_BYTES } from './files.js';
+import { parseDocument } from './parse.js';
+import { resolveToken, maskToken } from './mineru.js';
 
 const PUBLIC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'public');
 
@@ -215,6 +217,31 @@ export function createHandler({ workbench }) {
         } catch (error) {
           if (error instanceof CommandError) return json(error.status, { error: error.code, message: error.message });
           return json(500, { error: 'export_failed', message: error.message });
+        }
+      }).catch((error) => json(error.status || 400, { error: error.code || 'BAD_REQUEST', message: error.message }));
+    }
+
+    /* 解析能力的自检：只回答「Token 从哪来、掩码是什么」，不回传 Token 本身。
+       前端设置页用它显示真实状态，避免界面写死一句「已配置」。 */
+    if (path === '/api/mineru') {
+      try {
+        const { token, source } = resolveToken();
+        return json(200, { ok: true, configured: true, source, masked: maskToken(token) });
+      } catch (error) {
+        return json(200, { ok: true, configured: false, source: null, masked: null, hint: error.message });
+      }
+    }
+
+    /* 解析一份已导入的原件：这一步要出本机（MinerU），所以**必须由用户显式触发**，
+       不做「导入即自动解析」。失败时原件保留、状态转「解析失败」，可重试。 */
+    if (path === '/api/parse') {
+      if (req.method !== 'POST') { res.writeHead(405, { allow: 'POST' }); return res.end(); }
+      return readJson(req).then(async (body) => {
+        try {
+          return json(200, await parseDocument(workbench.db, workbench.workspace, body));
+        } catch (error) {
+          if (error instanceof CommandError) return json(error.status, { error: error.code, message: error.message });
+          return json(500, { error: 'parse_failed', message: error.message });
         }
       }).catch((error) => json(error.status || 400, { error: error.code || 'BAD_REQUEST', message: error.message }));
     }
