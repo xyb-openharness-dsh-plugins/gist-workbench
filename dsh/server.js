@@ -12,6 +12,7 @@ import { homedir } from 'node:os';
 import { dirname, extname, join, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
+import { COMMANDS, CommandError } from './commands.js';
 
 const PUBLIC_DIR = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'public');
 
@@ -102,6 +103,50 @@ export function servePublic(req, res, urlPath) {
   return sendFile(res, join(PUBLIC_DIR, 'index.html'));
 }
 
+/* ---------------- 请求体 ---------------- */
+
+const MAX_BODY = 64 * 1024;
+
+/** 请求体解析失败的可诊断异常（与 commands.js 的 CommandError 同形，HTTP 层统一按 status 回）。 */
+class BodyError extends Error {
+  constructor(code, message, status = 400) {
+    super(message);
+    this.code = code;
+    this.status = status;
+  }
+}
+
+/** 读 JSON 请求体。没有 content-type 也认（本机调用方就一个前端）；超长直接断开，不缓冲半截。 */
+function readJson(req) {
+  return new Promise((resolve, reject) => {
+    const chunks = [];
+    let size = 0;
+    req.on('data', (c) => {
+      size += c.length;
+      if (size > MAX_BODY) {
+        reject(new BodyError('BODY_TOO_LARGE', `请求内容超过 ${MAX_BODY / 1024}KB，这不是一条记录该有的长度`, 413));
+        req.destroy();
+        return;
+      }
+      chunks.push(c);
+    });
+    req.on('end', () => {
+      const raw = Buffer.concat(chunks).toString('utf8').trim();
+      if (!raw) return reject(new BodyError('BODY_EMPTY', '请求内容是空的'));
+      try {
+        const parsed = JSON.parse(raw);
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+          return reject(new BodyError('BODY_NOT_OBJECT', '请求内容必须是一个 JSON 对象'));
+        }
+        return resolve(parsed);
+      } catch {
+        return reject(new BodyError('BODY_NOT_JSON', '请求内容不是合法 JSON'));
+      }
+    });
+    req.on('error', (error) => reject(Object.assign(new BodyError('BODY_READ_FAILED', error.message), { status: 400 })));
+  });
+}
+
 export function createHandler({ workbench }) {
   return function handle(req, res) {
     const url = new URL(req.url, `http://${req.headers.host || '127.0.0.1'}`);
@@ -121,6 +166,24 @@ export function createHandler({ workbench }) {
         return json(500, { error: 'bootstrap_failed', message: error.message });
       }
     }
+
+    /* 写命令：只认 commands.js 的 COMMANDS 表，加命令只改那张表。
+       只收 POST + JSON；请求体上限 64KB（这四个命令都是几十个字，超了基本是搞错了）。 */
+    if (COMMANDS[path]) {
+      if (req.method !== 'POST') {
+        res.writeHead(405, { allow: 'POST' });
+        return res.end();
+      }
+      return readJson(req).then((body) => {
+        try {
+          return json(200, COMMANDS[path](workbench.db, body));
+        } catch (error) {
+          if (error instanceof CommandError) return json(error.status, { error: error.code, message: error.message });
+          return json(500, { error: 'command_failed', message: error.message });
+        }
+      }).catch((error) => json(error.status || 400, { error: error.code || 'BAD_REQUEST', message: error.message }));
+    }
+
     if (path.startsWith('/api/')) return json(404, { error: 'not_found', path });
 
     if (req.method !== 'GET' && req.method !== 'HEAD') {

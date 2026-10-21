@@ -1,5 +1,21 @@
 # 变更记录
 
+## 2026-10-21 · M2 第二段：写接口（四条命令）
+
+- **新增 `dsh/commands.js`**：`recordAdherence` / `recordSideEffect` / `recordMetricPoint` / `recordViewpoint`，
+  对应「今天吃了没 / 有什么反应 / 这次化验多少 / 我怎么想的」。
+  只做这四件，病理、危险度、手术、线序、剂量变更属于医生给的事实，必须走「上传 → 候选 → 逐条核对」。
+- **三条契约落到写侧**：看法只存原话（返回值无结论字段）；更正追加 `ord+1` 不覆盖旧行；缺字段/未定义指标/未来日期一律报错不猜。
+- **幂等**：同自然键同内容返回 `unchanged` 且不写库；改了内容返回 `superseded`，旧行保留。
+- **`dsh/server.js`**：新增 `POST /api/{adherence,side-effects,metric-points,viewpoints}`，
+  路由表只在 `commands.js` 的 `COMMANDS` 里维护一次；请求体限 64KB，GET 访问写命令回 405 + `allow: POST`。
+- **`docs/API-CONTRACT.md` 写实**：读/写两张表、status 三态、输入约束、错误码总表、刻意不做的六件事。
+- **`docs/G2-G3-SIGNOFF-2026-10-21.md`**：补闸口留痕——确认人、原话（`1. 确认 2. ok的 3. 需要。`）、
+  产物 sha256 指纹、已确认与未确认范围。
+- **测试**：新增 `test/commands.test.mjs` 8 项（幂等 / 更正版本 / 写进去读得出来 / 校验 / 命令表），
+  `server.test.mjs` 补 2 项（POST 后 bootstrap 可见、405/400/404 拒绝路径）。全量 **31/31** 绿，`npm run check` 全绿。
+- 顺手修：`server.test.mjs` 里残留的上一个癌种目录名 `StompalWorkspace` → `GistPalWorkspace`。
+
 ## 2026-10-21 · 演示档案补第三套（术前靶向 · 未手术）
 
 - **新增档案 C（邱惠兰 / 女 / 49 岁 / 胃底 GIST 8.2 cm / 未手术 / 术前伊马替尼治疗中）**。

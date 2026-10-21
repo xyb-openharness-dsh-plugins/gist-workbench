@@ -86,5 +86,55 @@ test('⑥ 资料目录校验：主目录 / 桌面根 / /tmp 一律拒绝，正�
   assert.ok(validateWorkspacePath(join(home, 'Desktop')).length > 0, '桌面根目录应被拒绝');
   assert.ok(validateWorkspacePath('/tmp').length > 0, '/tmp 应被拒绝');
   assert.ok(validateWorkspacePath('').length > 0, '空路径应被拒绝');
-  assert.deepEqual(validateWorkspacePath(join(home, 'Documents', 'StompalWorkspace')), []);
+  assert.deepEqual(validateWorkspacePath(join(home, 'Documents', 'GistPalWorkspace')), []);
 });
+
+/* ---------------- 写接口（M2 第二段） ---------------- */
+
+const post = (url, path, body) => fetch(url + path, {
+  method: 'POST',
+  headers: { 'content-type': 'application/json' },
+  body: typeof body === 'string' ? body : JSON.stringify(body),
+});
+const today = () => new Date().toISOString().slice(0, 10);
+
+test('⑦ POST /api/adherence：写进去后 bootstrap 能读到，重复提交幂等', async () => {
+  await withServer(async ({ url }) => {
+    const body = { profile: 'A', date: today(), drug: '伊马替尼', planned: '400 mg', taken: '400 mg' };
+    const r1 = await post(url, 'api/adherence', body);
+    assert.equal(r1.status, 200);
+    const j1 = await r1.json();
+    assert.equal(j1.ok, true);
+    assert.ok(['created', 'unchanged'].includes(j1.status));
+
+    const r2 = await post(url, 'api/adherence', body);
+    const j2 = await r2.json();
+    assert.equal(j2.status, 'unchanged', '同一份内容再提交应幂等');
+
+    const boot = await (await fetch(`${url}api/bootstrap`)).json();
+    const hit = boot.profiles.A.adherence.rows.find((row) => row[0] === body.date && row[1] === '伊马替尼');
+    assert.ok(hit, '服药分节里应能读到刚写的那一条');
+    assert.equal(hit[3], '400 mg');
+  });
+});
+
+test('⑧ 写接口的拒绝路径：GET 405 / 坏 JSON 400 / 未知档案 404 / 缺字段 400', async () => {
+  await withServer(async ({ url }) => {
+    const g = await fetch(`${url}api/adherence`);
+    assert.equal(g.status, 405, '写命令不接受 GET');
+    assert.equal(g.headers.get('allow'), 'POST');
+
+    const bad = await post(url, 'api/adherence', '{不是 json');
+    assert.equal(bad.status, 400);
+    assert.equal((await bad.json()).error, 'BODY_NOT_JSON');
+
+    const noProfile = await post(url, 'api/viewpoints', { profile: 'ZZ', date: today(), text: '在吗' });
+    assert.equal(noProfile.status, 404);
+    assert.equal((await noProfile.json()).error, 'PROFILE_NOT_FOUND');
+
+    const noText = await post(url, 'api/viewpoints', { profile: 'A', date: today(), text: '' });
+    assert.equal(noText.status, 400);
+    assert.equal((await noText.json()).error, 'FIELD_REQUIRED');
+  });
+});
+
