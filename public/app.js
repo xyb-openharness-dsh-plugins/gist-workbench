@@ -1224,7 +1224,7 @@ function dlgSettings() {
   <p class="small-note">患者数据只存入你明确选择的目录；工作台不把资料上传云端。</p></div>
   <div class="cfg-block" style="margin-top:12px" data-tab="parse" hidden><h3>文档解析（MinerU）</h3><div class="token-row"><code class="masked">MINERU_TOKEN 已配置（掩码：mr-****）</code></div>
   <p class="small-note">Token 只存本机 .secrets/（mode 600）；解析结果永远是候选，核对后才入档。</p></div>
-  <div class="cfg-block" style="margin-top:12px" data-tab="kb" hidden><h3>2026 临床数据库</h3><div class="path-row"><code>gist_cancer_trials_2026.sqlite · 10 条（演示）</code></div>
+  <div class="cfg-block" style="margin-top:12px" data-tab="kb" hidden><h3>2026 临床数据库</h3><div class="path-row"><code>gist_cancer_trials_2026.sqlite · 16 条（演示）</code></div>
   <p class="small-note">离线快照；中国注册库未采集，覆盖未知。</p></div>`, '<button class="primary" data-action="close">完成</button>');
 }
 function dlgAbout() {
@@ -1237,8 +1237,98 @@ function dlgAbout() {
 function dlgHelp() {
   openDialog('小吉宝', '原型操作说明', `<div class="cfg-block">顶栏「AI 对话」按钮打开右侧<b>原生会话挂载位</b>（可 × 隐藏、窄/标准/宽三档）。「整理本页要点」生成发送前可读的提示词；「模拟回复自检」演示文本层红线扫描。</div>
   <div class="cfg-block" style="margin-top:12px">「检查与指标」「看板」里的数值卡<b>轻点翻面</b>看参考区间；分级记录（水肿、乏力、腹泻、手足反应）不翻面、不连线。「病情一图秀」左侧可勾选指标、拖动缩放。</div>
-  <div class="cfg-block" style="margin-top:12px">左上角头像可切换<b>两个演示档案</b>：顾文琴（胃体 GIST 6.8 cm 高危 R0 术后 · 伊马替尼辅助治疗中）、罗建平（小肠 GIST 8.5 cm · 术后肝转移 · 伊马替尼加量后进展，舒尼替尼二线）。</div>`, '<button class="primary" data-action="close">知道了</button>');
+  <div class="cfg-block" style="margin-top:12px">左上角头像可切换<b>三套演示档案</b>：顾文琴（胃体 GIST 6.8 cm 高危 R0 术后 · 伊马替尼辅助）、罗建平（小肠 GIST 术后肝转移 · 伊马替尼加量后进展，舒尼替尼二线）、邱惠兰（胃底 8.2 cm · 未手术 · 伊马替尼术前治疗，危险度待定）。</div>`, '<button class="primary" data-action="close">知道了</button>');
 }
+/* ---------------- 写命令（开发版真实落库；原型只有 toast） ----------------
+ * 三条边界：
+ * 1) 表单只收「事实」：日期、原文、数值。分级与处理方式照抄，不做下拉预判；
+ * 2) 保存失败要把后端 message 原样显示（"日期不能晚于今天"这种话不能让用户猜）；
+ * 3) 保存成功后重新拉 bootstrap 再渲染——不自己拼状态，避免前端和库里两份事实。 */
+function postCommand(path, body) {
+  return fetch(`${apiBase()}${path}`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body)
+  }).then(async (r) => {
+    let j = null;
+    try { j = await r.json(); } catch { j = null; }
+    if (!r.ok) {
+      const why = (j && j.message) || `HTTP ${r.status}`;
+      const err = new Error(why);
+      err.code = j && j.error;
+      throw err;
+    }
+    return j;
+  });
+}
+
+/** 写成功后的统一收尾：提示 → 重拉 → 重渲染（停在当前页）。 */
+function afterWrite(kind, res) {
+  const note = res && res.status === 'superseded' ? '已更新为最新一条，旧版本保留' : '已记入资料库';
+  toast(`${kind}${note}`);
+  return loadBootstrap()
+    .then((data) => { buildData(data); render(); })
+    .catch(() => toast(`${kind}已保存，但页面刷新失败；刷新一次即可看到`));
+}
+
+function dlgAdherence() {
+  const p = P();
+  const first = (p.meds && p.meds.rows && p.meds.rows[0]) || null;
+  const drug = first ? first[0] : '';
+  const dose = first ? first[1] : '';
+  openDialog('记一次服药', '今天的药吃了吗', `
+  <div class="cfg-block">
+    <label style="display:block;margin-bottom:10px">日期
+      <input id="log-date" type="date" value="${todayISO()}" max="${todayISO()}" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block;margin-bottom:10px">药物
+      <input id="log-drug" value="${esc(drug)}" placeholder="照医嘱原文写" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block;margin-bottom:10px">计划剂量
+      <input id="log-planned" value="${esc(dose)}" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block;margin-bottom:10px">实际
+      <input id="log-taken" value="${esc(dose)}" placeholder="按计划 / 漏服 / 减到 300 mg" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block">备注（可选）
+      <input id="log-note" placeholder="为什么漏服、当天有没有吐" style="display:block;width:100%;margin-top:6px"></label>
+  </div>
+  <p class="small-note" style="margin-top:12px">工作台只记录事实，不算依从率、不评价该不该减量。</p>`,
+  '<button class="soft" data-action="close">取消</button><button class="primary" data-action="save-adherence">保存</button>');
+}
+
+function dlgViewpoint() {
+  openDialog('记一条感受', '我怎么想的', `
+  <div class="cfg-block">
+    <label style="display:block;margin-bottom:10px">日期
+      <input id="vp-date" type="date" value="${todayISO()}" max="${todayISO()}" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block;margin-bottom:10px">心情（可选，一两个词）
+      <input id="vp-mood" placeholder="发怵 / 踏实一点 / 说不清" style="display:block;width:100%;margin-top:6px"></label>
+    <label style="display:block">想记的话
+      <textarea id="vp-text" rows="5" placeholder="照自己的话说，不用写得像病历" style="display:block;width:100%;margin-top:6px;padding:10px;border:1px solid #d8e0ea;border-radius:10px;font:inherit"></textarea></label>
+  </div>
+  <p class="small-note" style="margin-top:12px">这条只作为「一条信息」记录，<b>不是医生结论</b>；不进趋势，也不进摘要事实区。</p>`,
+  '<button class="soft" data-action="close">取消</button><button class="primary" data-action="save-viewpoint">保存</button>');
+}
+
+function saveAdherence() {
+  return postCommand('/api/adherence', {
+    profile: state.profile,
+    date: $('#log-date').value,
+    drug: $('#log-drug').value,
+    planned: $('#log-planned').value,
+    taken: $('#log-taken').value,
+    note: $('#log-note').value
+  }).then((res) => { closeDialog(); return afterWrite('服药记录', res); })
+    .catch((e) => toast(`没能保存：${e.message}`));
+}
+
+function saveViewpoint() {
+  return postCommand('/api/viewpoints', {
+    profile: state.profile,
+    date: $('#vp-date').value,
+    mood: $('#vp-mood').value,
+    text: $('#vp-text').value
+  }).then((res) => { closeDialog(); return afterWrite('这条感受', res); })
+    .catch((e) => toast(`没能保存：${e.message}`));
+}
+
 function dlgExport() {
   const p = P();
   const md = ['# 复诊准备（演示导出）', '', `档案：${p.name}（${p.meta}）`, '', '## 事实区（已核对）', ...p.rhythm.map(r => `- ${r[0]}：${r[1]}（${r[2]}）`), '', '## 想问的事 / 我的看法（不是医生结论）', '- （按页面勾选结果导出；私密条目默认不含）', '', '> 本文件由工作台整理，不构成医疗建议。'].join('\n');
@@ -1383,9 +1473,10 @@ document.addEventListener('click', (e) => {
       if (!state.questions.includes(q)) state.questions.push(q);
       render(); toast('已加入复诊准备的问题清单');
     },
-    'add-adherence': () => toast('原型内不落库；真实版在这里记一次服药（日期 / 剂量 / 是否漏服）'),
+    'add-adherence': dlgAdherence,
     'add-meal': () => toast('原型内不落库；真实版在这里记一笔进食（餐次 / 份量 / 症状）'),
-    'add-viewpoint': () => toast('感受会记为"一条信息"，标注不是医生结论'),
+    'add-viewpoint': dlgViewpoint,
+    'save-adherence': saveAdherence, 'save-viewpoint': saveViewpoint,
     'add-line': () => toast('新增治疗线需核对方案原件后建立'),
     'export-nutrition': () => toast('就诊展示：最近 10 条进食记录 + 体重趋势（演示）'),
     'export-review': dlgExport,

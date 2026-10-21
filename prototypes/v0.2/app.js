@@ -1049,7 +1049,7 @@ function dlgSettings() {
   <p class="small-note">患者数据只存入你明确选择的目录；工作台不把资料上传云端。</p></div>
   <div class="cfg-block" style="margin-top:12px" data-tab="parse" hidden><h3>文档解析（MinerU）</h3><div class="token-row"><code class="masked">MINERU_TOKEN 已配置（掩码：mr-****）</code></div>
   <p class="small-note">Token 只存本机 .secrets/（mode 600）；解析结果永远是候选，核对后才入档。</p></div>
-  <div class="cfg-block" style="margin-top:12px" data-tab="kb" hidden><h3>2026 临床数据库</h3><div class="path-row"><code>gist_cancer_trials_2026.sqlite · 10 条（演示）</code></div>
+  <div class="cfg-block" style="margin-top:12px" data-tab="kb" hidden><h3>2026 临床数据库</h3><div class="path-row"><code>gist_cancer_trials_2026.sqlite · 16 条（演示）</code></div>
   <p class="small-note">离线快照；中国注册库未采集，覆盖未知。</p></div>`, '<button class="primary" data-action="close">完成</button>');
 }
 function dlgAbout() {
@@ -1062,7 +1062,7 @@ function dlgAbout() {
 function dlgHelp() {
   openDialog('小吉宝', '原型操作说明', `<div class="cfg-block">顶栏「AI 对话」按钮打开右侧<b>原生会话挂载位</b>（可 × 隐藏、窄/标准/宽三档）。「整理本页要点」生成发送前可读的提示词；「模拟回复自检」演示文本层红线扫描。</div>
   <div class="cfg-block" style="margin-top:12px">「检查与指标」「看板」里的数值卡<b>轻点翻面</b>看参考区间；分级记录（水肿、乏力、腹泻、手足反应）不翻面、不连线。「病情一图秀」左侧可勾选指标、拖动缩放。</div>
-  <div class="cfg-block" style="margin-top:12px">左上角头像可切换<b>两个演示档案</b>：顾文琴（胃体 GIST 6.8 cm 高危 R0 术后 · 伊马替尼辅助治疗中）、罗建平（小肠 GIST 8.5 cm · 术后肝转移 · 伊马替尼加量后进展，舒尼替尼二线）。</div>`, '<button class="primary" data-action="close">知道了</button>');
+  <div class="cfg-block" style="margin-top:12px">左上角头像可切换<b>三套演示档案</b>：顾文琴（胃体 GIST 6.8 cm 高危 R0 术后 · 伊马替尼辅助）、罗建平（小肠 GIST 术后肝转移 · 伊马替尼加量后进展，舒尼替尼二线）、邱惠兰（胃底 8.2 cm · 未手术 · 伊马替尼术前治疗，危险度待定）。</div>`, '<button class="primary" data-action="close">知道了</button>');
 }
 function dlgExport() {
   const p = P();

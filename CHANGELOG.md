@@ -1,5 +1,20 @@
 # 变更记录
 
+## 2026-10-21 · 写接口接进前端（服药 / 感受两个入口）
+
+- **`public/app.js`**：`add-adherence` / `add-viewpoint` 从 toast 换成真实弹层，
+  走 `POST /api/{adherence,viewpoints}`；成功后再拉一次 `/api/bootstrap` 重建数据并重渲染，
+  不自己拼前端状态（避免页面与库出现两份事实）。
+- **失败提示用后端 `message` 原文**：「日期不能晚于今天」「这个档案里没有指标 hgb」这类话直接给用户，
+  不吞成「保存失败」。
+- **读模型排序修正**：`adherence_rows` / `side_effect_rows` / `imaging_rows` / `viewpoints` 改为 `ORDER BY d, ord`。
+  只按 `ord` 排会让今天新记的一条挤进几个月前的记录中间（写接口上线后才暴露）。`ord` 仍只在同一天同一条内分版本。
+  演示数据本来就是日期升序，99 组 parity 仍全绿。
+- **顺手修文案**：设置页「临床数据库 10 条（演示）」→ 16 条；操作说明里「两个演示档案」→ 三套（补邱惠兰）。
+- **端到端实测**：随机端口起 dev-server + 无头 Chrome —— 打开弹层 → 填 400 mg 计划 / 300 mg 实际 → 保存
+  → toast「服药记录已记入资料库」→ 表格最后一行出现 `2026-10-21`；重复提交返回 `unchanged`；
+  未来日期返回 400 `DATE_FUTURE`；感受同样落库并读到。零控制台错误。
+
 ## 2026-10-21 · M2 第二段：写接口（四条命令）
 
 - **新增 `dsh/commands.js`**：`recordAdherence` / `recordSideEffect` / `recordMetricPoint` / `recordViewpoint`，

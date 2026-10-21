@@ -66,11 +66,13 @@ function readProfile(db, key) {
     .map((r) => trimTail([r.name, r.dose, r.schedule, r.start, r.end, r.status, r.note]));
   const doseRows = rows(db, 'SELECT d, drug, from_dose, to_dose, reason FROM dose_rows WHERE profile_key = ? ORDER BY ord', key)
     .map((r) => trimTail([r.d, r.drug, r.from_dose, r.to_dose, r.reason]));
-  const adherenceRows = rows(db, 'SELECT d, drug, planned, taken, note FROM adherence_rows WHERE profile_key = ? ORDER BY ord', key)
+  /* 按日期 + ord 排：ord 只在"同一天同一件事"内部分版本，跨天仍以日期为准。
+     只按 ord 排会让新记的一条挤到几个月前的记录中间（写接口上线后暴露的问题）。 */
+  const adherenceRows = rows(db, 'SELECT d, drug, planned, taken, note FROM adherence_rows WHERE profile_key = ? ORDER BY d, ord', key)
     .map((r) => trimTail([r.d, r.drug, r.planned, r.taken, r.note]));
-  const sideRows = rows(db, 'SELECT d, term, grade, action, note FROM side_effect_rows WHERE profile_key = ? ORDER BY ord', key)
+  const sideRows = rows(db, 'SELECT d, term, grade, action, note FROM side_effect_rows WHERE profile_key = ? ORDER BY d, ord', key)
     .map((r) => trimTail([r.d, r.term, r.grade, r.action, r.note]));
-  const imagingRows = rows(db, 'SELECT d, kind, site, finding, next, note FROM imaging_rows WHERE profile_key = ? ORDER BY ord', key)
+  const imagingRows = rows(db, 'SELECT d, kind, site, finding, next, note FROM imaging_rows WHERE profile_key = ? ORDER BY d, ord', key)
     .map((r) => trimTail([r.d, r.kind, r.site, r.finding, r.next, r.note]));
   const monitorRows = rows(db, 'SELECT item, freq, last, next, note FROM monitor_rows WHERE profile_key = ? ORDER BY ord', key)
     .map((r) => trimTail([r.item, r.freq, r.last, r.next, r.note]));
@@ -114,7 +116,7 @@ function readProfile(db, key) {
     rhythm: rows(db, 'SELECT item, freq, guideline, next FROM rhythm WHERE profile_key = ? ORDER BY ord', key)
       .map((r) => trimTail([r.item, r.freq, r.guideline, r.next])),
     events: rows(db, 'SELECT d, label FROM events WHERE profile_key = ? ORDER BY rowid', key).map((r) => trimTail([r.d, r.label])),
-    viewpoints: rows(db, 'SELECT d, mood, text FROM viewpoints WHERE profile_key = ? ORDER BY ord', key).map((r) => trimTail([r.d, r.mood, r.text])),
+    viewpoints: rows(db, 'SELECT d, mood, text FROM viewpoints WHERE profile_key = ? ORDER BY d, ord', key).map((r) => trimTail([r.d, r.mood, r.text])),
     docs: rows(db, 'SELECT id, name, date, type, status FROM documents WHERE profile_key = ? ORDER BY ord', key)
       .map((r) => trimTail([r.id, r.name, r.date, r.type, r.status])),
     candidates: rows(db, 'SELECT id, name, value, source, status FROM candidate_fields WHERE profile_key = ? ORDER BY ord', key)
