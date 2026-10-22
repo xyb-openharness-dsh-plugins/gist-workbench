@@ -36,18 +36,21 @@ export function maskToken(token) {
 }
 
 /**
- * Token 解析优先级：显式传入 > 环境变量 `MINERU_TOKEN` > `.secrets/mineru.json`。
+ * Token 解析优先级：显式传入 > `.secrets/mineru.json` > 环境变量 `MINERU_TOKEN`。
+ * 文件优先、env 次之（2026-10-22 统一口径）：界面里保存的 Token 永远生效，
+ * env 只在文件缺失时兜底——否则一条遗留的过期 env 会长期盖住新存的 Token，
+ * 表现为"换了 Token 还是 401"，极难自查。
  * 三处都没有就报 `NO_TOKEN`，**不静默用匿名请求**（那只会得到一个看不懂的 401）。
  */
 export function resolveToken({ token = null, env = process.env, secretFile = MINERU_SECRET_FILE } = {}) {
   if (token?.trim()) return { token: token.trim(), source: 'explicit' }
-  if (env?.MINERU_TOKEN?.trim()) return { token: env.MINERU_TOKEN.trim(), source: 'env:MINERU_TOKEN' }
   try {
     const parsed = JSON.parse(readFileSync(secretFile, 'utf8'))
     if (parsed?.token?.trim()) return { token: parsed.token.trim(), source: `.secrets/mineru.json` }
   } catch {
     /* 文件不存在或不是 JSON 都视为"没配"，不掩盖真正的问题 */
   }
+  if (env?.MINERU_TOKEN?.trim()) return { token: env.MINERU_TOKEN.trim(), source: 'env:MINERU_TOKEN' }
   throw new MineruError(
     'NO_TOKEN',
     '没有 MinerU Token：设置环境变量 MINERU_TOKEN，或写 .secrets/mineru.json（{"token": "sk-..."}）。该文件已在 .gitignore 里。',
@@ -57,18 +60,16 @@ export function resolveToken({ token = null, env = process.env, secretFile = MIN
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
 
 /**
- * 解析模型：默认走 `vlm`，退回 `pipeline`。
+ * 解析模型：默认 `pipeline`，接口不接受这个参数时退回 `vlm`。
  *
- * 2026-10-21 实测（同一份检验单 PDF，两种排版各跑一次）：
- * - 表格排版：两个模型都对（5/5 项指标带单位）；
- * - 纯文本对齐排版（`cupsfilter` 那种靠空格分列）：`pipeline` 把整张表压成 3 个
- *   `<td>`、数值与项目名串在一起（210 / 22 直接丢失），抽取出 **0 条候选**；
- *   `vlm` 仍还原成 4 列，5/5 全部正确。
- * 所以默认用 vlm；只有当接口明确说模型参数不被接受时才退回 pipeline，
- * 不因为"文件解析失败"就换模型重试（那是文件问题，重试只是多花一次额度）。
+ * 历史（2026-10-21 实测）：同一份靠空格分列的检验单 PDF，`pipeline` 会把整张表压成 3 个 `<td>`，
+ * 210 / 22 直接丢失，抽取出 0 条候选；`vlm` 还原成 4 列、5/5 全中。当时因此默认改成了 vlm。
+ *
+ * 2026-10-22 统一口径决定：**默认回到 pipeline**（跨工作台统一，便于比较解析结果）。
+ * 代价是上面那类压平表格可能丢列，核对时留意；调用方显式传 `modelVersion: 'vlm'` 可覆盖。
  */
-export const MINERU_MODEL_DEFAULT = 'vlm'
-export const MINERU_MODEL_FALLBACK = 'pipeline'
+export const MINERU_MODEL_DEFAULT = 'pipeline'
+export const MINERU_MODEL_FALLBACK = 'vlm'
 
 /** 这个错误值得换模型再试一次吗？只认"模型参数本身不被接受"，不认文件失败。 */
 export function modelFallbackWorthy(error) {

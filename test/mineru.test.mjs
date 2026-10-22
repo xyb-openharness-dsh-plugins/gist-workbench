@@ -77,7 +77,7 @@ function replay(routes) {
 const okJson = (body) => () => ({ ok: true, status: 200, json: async () => body });
 const bin = (buf) => () => ({ ok: true, status: 200, arrayBuffer: async () => buf });
 
-test('① Token 优先级：显式 > 环境变量 > 密钥文件；都没有就 NO_TOKEN', () => {
+test('① Token 优先级：显式 > 密钥文件 > 环境变量；都没有就 NO_TOKEN', () => {
   const secret = join(tmp, 'secret.json');
   writeFileSync(secret, JSON.stringify({ token: 'sk-from-file-key' }), 'utf8');
 
@@ -85,9 +85,15 @@ test('① Token 优先级：显式 > 环境变量 > 密钥文件；都没有就 
   assert.equal(c1.token, 'sk-explicit');
   assert.equal(c1.tokenSource, 'explicit');
 
+  // 文件优先（2026-10-22 统一口径）：两者都在时用文件里那把
   const c2 = new MineruClient({ env: { MINERU_TOKEN: 'sk-env' }, secretFile: secret, fetchImpl: () => {} });
-  assert.equal(c2.token, 'sk-env');
-  assert.equal(c2.tokenSource, 'env:MINERU_TOKEN');
+  assert.equal(c2.token, 'sk-from-file-key');
+  assert.equal(c2.tokenSource, '.secrets/mineru.json');
+
+  // env 只在文件缺失时兜底
+  const c2b = new MineruClient({ env: { MINERU_TOKEN: 'sk-env' }, secretFile: join(tmp, 'nope.json'), fetchImpl: () => {} });
+  assert.equal(c2b.token, 'sk-env');
+  assert.equal(c2b.tokenSource, 'env:MINERU_TOKEN');
 
   const c3 = new MineruClient({ env: {}, secretFile: secret, fetchImpl: () => {} });
   assert.equal(c3.token, 'sk-from-file-key');

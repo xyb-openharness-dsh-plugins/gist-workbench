@@ -1,5 +1,12 @@
 # 变更记录
 
+## 未发布 — 2026-10-22（MinerU 统一口径）
+
+- 默认解析模型 vlm → **pipeline**，回退模型反转为 vlm。
+- 密钥口径：`.secrets/mineru.json` 唯一持久来源，`MINERU_TOKEN` 仅作兜底（`docs/18-MINERU-PARSING.md` 同步）。
+- **Token 优先级改为文件优先**：显式 > `.secrets/mineru.json` > 环境变量。此前 env 优先，一条遗留的过期 env 会让界面新存的 Token 长期不生效。
+- 单测 8 条仍全绿。
+
 ## 2026-10-21 · MinerU 云端解析接通（导入一份病理 PDF 就能出候选）
 
 - **`dsh/mineru.js`**：API v4 四步（申请批 → PUT 上传 → 轮询 → 下载 zip 取 `full.md`），默认 `vlm` 模型；
