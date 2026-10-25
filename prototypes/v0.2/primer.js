@@ -32,7 +32,18 @@
     var d = data()
     if (!d) return null
     var btn = findTrigger()
-    if (btn) { btn.setAttribute('aria-expanded', state.open ? 'true' : 'false'); return btn }
+    if (btn) {
+      /* 接管已存在的按钮：补齐 a11y 属性。
+         2026-10-25 head-neck 实测：手写的 <button data-primer-open>?</button> 只有可见的 "?"，
+         读屏软件读出来就是一个问号。接管时必须把 label 补上，而不是假定作者写全了。 */
+      if (!btn.getAttribute('aria-label') && !btn.getAttribute('aria-labelledby')) {
+        btn.setAttribute('aria-label', '疾病概要：定义、医学资料与指南情况、治疗全景、发展趋势')
+      }
+      if (!btn.getAttribute('aria-haspopup')) btn.setAttribute('aria-haspopup', 'dialog')
+      if (!btn.getAttribute('aria-controls')) btn.setAttribute('aria-controls', PANEL_ID)
+      btn.setAttribute('aria-expanded', state.open ? 'true' : 'false')
+      return btn
+    }
     btn = document.createElement('button')
     btn.type = 'button'
     btn.className = 'dp-trigger'
