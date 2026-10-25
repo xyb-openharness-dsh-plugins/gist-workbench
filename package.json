@@ -25,7 +25,8 @@
     "demo": "node demo/build-demo-data.mjs",
     "trials": "node scripts/fetch-gist-trials-2026.mjs",
     "start": "node scripts/dev-server.mjs",
-    "pack:check": "npm pack --dry-run"
+    "pack:check": "npm pack --dry-run",
+    "probe:primer": "node scripts/probe-disease-primer.mjs"
   },
   "dsh": {
     "bundle": {
