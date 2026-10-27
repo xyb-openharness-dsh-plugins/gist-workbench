@@ -1,5 +1,29 @@
 # 变更记录
 
+## 2026-10-27 · 36 号 v2 补齐（指南可点 + 状态卡）
+
+- **模式层**：`prototypes/v0.2/primer.js` / `primer.css` 覆盖为 starter 2026-10-27 版
+  （§2.5 原件列可点链接、§4.3 正文右边界与表格对齐、缺链接红色标记）；探针同步到 P1–P9 版。
+- **链接（§2.5）**：`primer-data.js` 17 个断言位全部补齐，0 处纯文字「原件」列、0 处缺链接标记。
+  5 条唯一 URL，逐条用真浏览器验活（`verify-links.mjs`）全部 `OK`：
+  - NCCN GIST 指南详情页（v1.2026）— https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1507
+  - CSCO GIST 2025 出版方书目页（人卫商城）— https://www.pmphmall.com/gdsdetail/656257-335855
+  - 中国 GIST 共识 2017 英文版（Chin J Cancer Res 2017;29(4):281-293）DOI — https://doi.org/10.21147/j.issn.1000-9604.2017.04.01
+  - WHO 消化系统肿瘤分类（IARC 出版方页）— https://publications.iarc.who.int/Book-And-Report-Series/Who-Classification-Of-Tumours/Digestive-System-Tumours-2019
+  - ClinicalTrials.gov GIST 干预性研究检索页（自采快照口径）— https://clinicaltrials.gov/search?cond=Gastrointestinal%20Stromal%20Tumor&aggFilters=studyType:int
+- **未取得项**：NCCN / CSCO / WHO 全本与中文版共识原文均未取得，表内照实写「未取得原件，据二次来源」，
+  `note` 注明「全文需账号 / 需购买 / 英文版替代」，页码一律「页码待核」；**未编造任何 URL**。
+- **状态卡（§2.6）**：看板首卡加四件结构（eyebrow / 大字天数 / 现状行 / 出口按钮排）。
+  本仓数据无锚点字段（移植 Day 0 / 诱导 D1 / 手术日），整卡显示「待初始化」并指向
+  「病情整理」上传 → 解析 → 核对三步；主按钮进建档流程，副按钮打开疾病概要浮窗。
+- **开发版（public/）**：补上 `primer.js` / `primer.css` / `primer-data.js` 三件与顶栏「?」入口，
+  新增 `scripts/check-primer-copies.mjs` 断言三件与原型逐字节同源、入口与加载顺序齐全；
+  `npm run check` 末尾接链接断言（原型 + public 两份）与副本一致性检查。
+- **措辞检查**：`check-wording.mjs` 的换癌种残留扫描改为按行判定（保留 `wording-allow` 与否定语境放行），
+  `primer-data.js` 中「CEA 不进默认指标集」属排除式表述，显式标注后放行。
+- 验收：探针 10/10 PASS（含 P9 三档排版）；`npm run check` 退出码 0；`npm test` 67/67（UI parity 含状态卡）。
+- 版本：0.1.0 → **0.1.1**（原型快照按 D37 仍冻结在 0.1.0）。
+
 ## 未发布 — 2026-10-22（MinerU 统一口径）
 
 - 默认解析模型 vlm → **pipeline**，回退模型反转为 vlm。

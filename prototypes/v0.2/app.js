@@ -400,6 +400,30 @@ const pill = (t, c = '') => `<span class="pill ${c}">${esc(t)}</span>`;
 
 /* ---------------- views ---------------- */
 
+/* 病程状态卡（36 号 §2.6，看板首卡，也是疾病概要浮窗的入口）。四件：
+   ① 卡头 eyebrow「D+N 状态卡 · 距…」；② 大字天数（锚点日派生，不手填）；
+   ③ 现状行（阶段原文 + 状态 + 下次日期与事项）；④ 出口按钮排（主按钮进当前阶段核心页 +
+   副按钮「疾病概要：<病>是什么？」打开浮窗）。
+   本仓数据目前没有锚点字段（移植 Day 0 / 诱导 D1 / 手术日），所以走「待初始化」并指向
+   「病情整理」的上传 → 解析 → 核对三步；锚点登记后同一处自动按锚点日算天数。 */
+function statusCard(p) {
+  const anchor = p.anchorDate ? new Date(`${p.anchorDate}T00:00:00`) : null;
+  const days = anchor && !Number.isNaN(anchor.getTime())
+    ? Math.floor((Date.now() - anchor.getTime()) / 86400000)
+    : null;
+  const next = (p.rhythm && p.rhythm[0]) || null;
+  const phase = (p.path && p.path[2]) || '未登记';
+  const eyebrow = days === null ? 'D+N 状态卡 · 待初始化' : `D+${days} 状态卡 · 距下次复查`;
+  const big = days === null ? '待初始化' : `第 ${days} 天`;
+  return `<div class="card accent status-card">
+    <div class="card-head"><div><span class="eyebrow">${esc(eyebrow)}</span><h2>病程状态卡</h2></div><span class="source-link">天数由锚点日派生，不手填</span></div>
+    <div class="status-day">${esc(big)}</div>
+    <p class="status-now"><b>阶段</b>${esc(p.stage)}　·　<b>状态</b>${esc(phase)}　·　<b>下次</b>${next ? `${esc(next[3])} · ${esc(next[0])}` : '未登记'}</p>
+    <p class="small-note">${days === null ? '锚点日（移植 Day 0 / 诱导 D1 / 手术日）尚未登记：先用「病情整理」的上传 → 解析 → 核对三步建立档案，登记后这里按锚点日算出天数。' : '天数由锚点日计算，日期以医生安排为准。'}</p>
+    <div class="actions"><button class="primary" data-action="${days === null ? 'go-records' : 'go-meds'}">${days === null ? '去病情整理建档案（三步）→' : '看当前阶段核心页（靶向用药）→'}</button>
+      <button class="soft" data-primer-open>疾病概要：胃肠间质瘤是什么？</button></div></div>`;
+}
+
 function vDashboard() {
   const p = P(), m = M();
   const next = p.rhythm[0];
@@ -415,7 +439,7 @@ function vDashboard() {
     ${p.rhythm.map(r => row(`<b>${esc(r[0])}</b>`, `${esc(r[1])} — ${esc(r[2])}`, `<small>${esc(r[3])}</small>`)).join('')}
     <p class="small-note">以上为医生安排与常见节奏的摘录，仅供准备讨论；实际安排以你的医生为准。</p></div>`;
   const cards = (DASH_KEYS[state.profile] || []).filter(k => m[k]).map(k => mcard(k, m[k])).join('');
-  return `<div class="page-enter">${pageHead()}
+  return `<div class="page-enter">${pageHead()}${statusCard(p)}
   <div class="hero"><div><span class="eyebrow">当前情况</span><h1>${esc(p.headline)}</h1><p>${esc(p.mindset)}</p>
     <div class="actions"><button class="primary" data-action="go-timeline">看病情一图秀</button><button class="soft" data-action="go-meds">靶向用药</button><button class="soft hero-ai" data-action="agent-open">${icon('chat')}AI 对话</button></div></div>
     <div class="hero-mascot" aria-hidden="true"><span style="font-size:56px">🐤</span></div></div>

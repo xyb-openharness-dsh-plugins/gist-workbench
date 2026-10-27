@@ -15,12 +15,14 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
-<title>小吉宝 GistPal · 胃肠间质瘤工作台 v0.1.0</title>
+<title>小吉宝 GistPal · 胃肠间质瘤工作台 v0.1.1</title>
 <!-- 内联 favicon：原型是 file:// 或单目录静态托管，不给 favicon.ico 会在控制台留一条 404 -->
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%23b5762a'/%3E%3Ctext x='16' y='23' font-size='19' font-family='PingFang SC,Helvetica,sans-serif' font-weight='700' fill='%23fff' text-anchor='middle'%3E%E5%90%89%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="style.css">
 <!-- 顶栏三段式与 AI 面板分栏是开发版新增（原型没有），单独成文件 shell.css，避免打乱 style.css 与定稿原型的逐行对齐 -->
 <link rel="stylesheet" href="shell.css">
+<!-- 36 号疾病概要：样式与原型同源（primer.css 从 starter assets/patterns 原样同步） -->
+<link rel="stylesheet" href="primer.css">
 </head>
 <body>
 <a class="skip" href="#main">跳到主要内容</a>
@@ -44,13 +46,14 @@
       <div class="tb-brand">
         <span class="tb-name">小吉宝工作台</span>
         <span class="breadcrumb"><span>/</span><b id="breadcrumb">看板</b></span>
-        <button class="tb-ver" id="ver-chip" data-action="about" aria-label="关于小吉宝：查看版本号与构建信息">v0.1.0</button>
+        <button class="tb-ver" id="ver-chip" data-action="about" aria-label="关于小吉宝：查看版本号与构建信息">v0.1.1</button>
       </div>
       <p class="tb-hint" id="top-hint">点「AI 对话」打开右侧会话面板；× 只是收起，不会结束会话。</p>
       <div class="tb-actions">
         <button class="status" id="ready-store" data-action="open-store" aria-label="资料目录：已激活"><i></i><span>资料目录</span><b>已激活</b></button>
         <button data-action="settings" aria-label="打开设置：工作区目录、文档解析、临床数据库">设置</button>
         <button id="font-toggle" aria-pressed="false" title="切换大字">大字 Aa</button>
+        <button class="icon-button" data-primer-open aria-label="疾病概要：定义、医学资料与指南情况、治疗全景、发展趋势" title="疾病概要">?</button>
         <button class="tb-agent" id="agent-toggle" data-action="agent" aria-expanded="false" aria-label="AI 对话：打开右侧会话面板"><i class="grey"></i><span id="agent-label">AI 对话</span></button>
         <button class="icon-button" id="agent-hide" data-action="agent" aria-label="收起 AI 对话面板" title="收起（不会结束会话）" hidden>×</button>
       </div>
@@ -79,7 +82,7 @@
         </div>
       </aside>
     </div>
-    <footer class="footer">小吉宝 · 与胃肠间质瘤患者和照护者一起整理、理解、准备沟通 <span class="ver-line"><b id="app-version">v0.1.0</b><em id="app-build">2026-10-21</em></span></footer>
+    <footer class="footer">小吉宝 · 与胃肠间质瘤患者和照护者一起整理、理解、准备沟通 <span class="ver-line"><b id="app-version">v0.1.1</b><em id="app-build">2026-10-21</em></span></footer>
   </div>
 </div>
 <dialog id="dialog" aria-labelledby="dialog-title">
@@ -88,5 +91,8 @@
   <div id="dialog-foot" class="dialog-foot"></div>
 </dialog>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
+<!-- 36 号：数据必须先于模块；两者都 defer，顺序与原型一致（demo-data → primer-data → primer → app） -->
+<script src="primer-data.js" defer></script>
+<script src="primer.js" defer></script>
 <script src="app.js" defer></script>
 </body></html>

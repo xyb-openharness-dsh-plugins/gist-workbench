@@ -6,13 +6,35 @@
  * 本癌种有两处必须分开写：
  *   ① 分期（TNM）与危险度分级（改良 NIH / AFIP-Miettinen / 中国共识 2017）不是一套东西；
  *   ② 危险度只记录医生给的原文与体系，不重算、不取最高、不换算。
- * 原件状态：NCCN / CSCO / WHO / 中国共识均未取得原件，页码「页码待核」。
+ * 原件状态：NCCN / CSCO / WHO / 中国共识均未取得原件，页码「页码待核」；
+ *   按 36 号 §2.5，未取得原件的每一行都给 `secondaryUrl`（2026-10-27 逐条用真浏览器验活）。
  */
+const L = {
+  /* NCCN 官网指南详情页（GIST，v1.2026；全文需 NCCN 账号） */
+  nccn: 'https://www.nccn.org/guidelines/guidelines-detail?category=1&id=1507',
+  /* CSCO 2025 版出版方书目页（人卫智慧服务商城；全文需购买） */
+  csco: 'https://www.pmphmall.com/gdsdetail/656257-335855',
+  /* 中国 GIST 共识 2017 的英文版（Chin J Cancer Res 2017;29(4):281-293）DOI */
+  consensus: 'https://doi.org/10.21147/j.issn.1000-9604.2017.04.01',
+  /* WHO 分类第 5 版第 1 卷「消化系统肿瘤」IARC 出版方页（全本需购买） */
+  who: 'https://publications.iarc.who.int/Book-And-Report-Series/Who-Classification-Of-Tumours/Digestive-System-Tumours-2019',
+  /* ClinicalTrials.gov 检索页：条件 = GIST，仅干预性研究（与自采口径一致） */
+  ctgov: 'https://clinicaltrials.gov/search?cond=Gastrointestinal%20Stromal%20Tumor&aggFilters=studyType:int'
+}
+
+const NOTE = {
+  nccn: '官网指南详情页；全文需 NCCN 账号',
+  csco: '人卫社出版方书目页；全文需购买',
+  consensus: '英文版 Chin J Cancer Res 2017;29(4):281-293；中文原版未取得',
+  who: 'IARC 出版方页；全本需购买',
+  ctgov: '自采快照；第三方原件未存档；ChinaDrugTrials 与 ChiCTR 未采集'
+}
+
 window.DISEASE_PRIMER = {
   brand: '小吉宝 GistPal',
   name: '胃肠间质瘤',
   en: 'Gastrointestinal Stromal Tumor（GIST）',
-  updated: '2026-10-25',
+  updated: '2026-10-27',
   sections: [
     {
       id: 'definition',
@@ -25,26 +47,26 @@ window.DISEASE_PRIMER = {
         '危险度分级与分期是两套东西：GIST 常用改良 NIH（Fletcher）与 AFIP-Miettinen 等危险度体系，按肿瘤大小 + 核分裂数（AFIP 另加部位）分级；本台不把危险度当 TNM，也不在两套体系之间换算、不取最高。',
         '肿瘤破裂（术前自发或术中）独立于危险度体系记录，不与任何一级混写。',
         '转移以肝转移与腹膜播散为主，淋巴结转移少；本台不设「淋巴结分期」结构。',
-        'GIST 没有公认的血清肿瘤标志物；CEA / CA19-9 / SCC 不进默认指标集，LDH 只作普通化验记录。'
+        'GIST 没有公认的血清肿瘤标志物；CEA / CA19-9 / SCC 不进默认指标集，LDH 只作普通化验记录。' // wording-allow: 否定表述——「不进默认指标集」是排除这些标志物，不是上一癌种残留
       ],
       sources: [
-        { org: 'NCCN', doc: 'NCCN Guidelines · Gastrointestinal Stromal Tumors（GIST）', version: 'v1.2026（2026-01-13 更新）', original: false, page: '页码待核' },
-        { org: 'CSCO', doc: 'CSCO 胃肠间质瘤诊疗指南', version: '2025 版', original: false, page: '页码待核' },
-        { org: '中国 GIST 共识', doc: '中国胃肠间质瘤诊断治疗共识（2017 修改版）', version: '2017', original: false, page: '页码待核' }
+        { org: 'NCCN', doc: 'NCCN Guidelines · Gastrointestinal Stromal Tumors（GIST）', version: 'v1.2026（2026-01-13 更新）', original: false, secondaryUrl: L.nccn, note: NOTE.nccn, page: '页码待核' },
+        { org: 'CSCO', doc: 'CSCO 胃肠间质瘤诊疗指南', version: '2025 版', original: false, secondaryUrl: L.csco, note: NOTE.csco, page: '页码待核' },
+        { org: '中国 GIST 共识', doc: '中国胃肠间质瘤诊断治疗共识（2017 修改版）', version: '2017', original: false, secondaryUrl: L.consensus, note: NOTE.consensus, page: '页码待核' }
       ]
     },
     {
       id: 'evidence',
       title: '医学资料规范和指南情况',
       intro: '这台工作台里出现的每一条「该记什么、按什么粒度记」，都应能追到下面某一份文件。'
-        + '本项目对这几份文件都没有取得原件——表格里照实写，不假装看过。',
+        + '本项目对这几份文件都没有取得原件——表格里照实写，不假装看过；每一行都给出可点开的出版方页或二次来源。',
       table: {
         head: ['机构', '文件', '版本 / 年份', '原件', '本台的用途'],
         rows: [
-          ['NCCN', 'NCCN Guidelines · Gastrointestinal Stromal Tumors（GIST）', 'v1.2026（2026-01-13 更新）', '未取得原件', '危险度多体系、线序与复查节奏的并列引用'],
-          ['CSCO', 'CSCO 胃肠间质瘤诊疗指南', '2025 版', '未取得原件', '国内推荐分级与野生型四分；具体条文未逐条落文档，不作引用依据'],
-          ['中国 GIST 共识', '中国胃肠间质瘤诊断治疗共识（2017 修改版）', '2017', '未取得原件', '国内常用危险度分级；阈值与 AFIP 接近但不完全一致'],
-          ['WHO', 'Classification of Tumours: Digestive System Tumours', '版本未核实', '未取得原件', '病理类型命名的口径']
+          ['NCCN', 'NCCN Guidelines · Gastrointestinal Stromal Tumors（GIST）', 'v1.2026（2026-01-13 更新）', { text: '未取得原件，据二次来源', url: L.nccn }, '危险度多体系、线序与复查节奏的并列引用'],
+          ['CSCO', 'CSCO 胃肠间质瘤诊疗指南', '2025 版', { text: '未取得原件，据二次来源', url: L.csco }, '国内推荐分级与野生型四分；具体条文未逐条落文档，不作引用依据'],
+          ['中国 GIST 共识', '中国胃肠间质瘤诊断治疗共识（2017 修改版）', '2017', { text: '未取得原件，据二次来源', url: L.consensus }, '国内常用危险度分级；阈值与 AFIP 接近但不完全一致'],
+          ['WHO', 'Classification of Tumours: Digestive System Tumours', '版本未核实', { text: '未取得原件，据二次来源', url: L.who }, '病理类型命名的口径']
         ]
       },
       points: [
@@ -54,10 +76,10 @@ window.DISEASE_PRIMER = {
         '本台对未取得原件的文件只记「存在」与「大致讲什么」，不引用其具体条文，页码一律写待核。'
       ],
       sources: [
-        { org: 'NCCN', doc: 'NCCN Guidelines · Gastrointestinal Stromal Tumors（GIST）', version: 'v1.2026', original: false, page: '页码待核' },
-        { org: 'CSCO', doc: 'CSCO 胃肠间质瘤诊疗指南', version: '2025 版', original: false, page: '页码待核' },
-        { org: '中国 GIST 共识', doc: '中国胃肠间质瘤诊断治疗共识（2017 修改版）', version: '2017', original: false, page: '页码待核' },
-        { org: 'WHO', doc: 'Classification of Tumours: Digestive System Tumours', version: '版本未核实', original: false, page: '页码待核' }
+        { org: 'NCCN', doc: 'NCCN Guidelines · Gastrointestinal Stromal Tumors（GIST）', version: 'v1.2026', original: false, secondaryUrl: L.nccn, note: NOTE.nccn, page: '页码待核' },
+        { org: 'CSCO', doc: 'CSCO 胃肠间质瘤诊疗指南', version: '2025 版', original: false, secondaryUrl: L.csco, note: NOTE.csco, page: '页码待核' },
+        { org: '中国 GIST 共识', doc: '中国胃肠间质瘤诊断治疗共识（2017 修改版）', version: '2017', original: false, secondaryUrl: L.consensus, note: NOTE.consensus, page: '页码待核' },
+        { org: 'WHO', doc: 'Classification of Tumours: Digestive System Tumours', version: '版本未核实', original: false, secondaryUrl: L.who, note: NOTE.who, page: '页码待核' }
       ]
     },
     {
@@ -102,8 +124,8 @@ window.DISEASE_PRIMER = {
         '以上是文献与指南里列出的手段，按病期与线序排列，不代表任何一项适合你。选哪一个，这一句需要问你的医生。'
       ],
       sources: [
-        { org: 'NCCN', doc: 'NCCN Guidelines · Gastrointestinal Stromal Tumors（GIST）', version: 'v1.2026', original: false, page: '页码待核' },
-        { org: 'CSCO', doc: 'CSCO 胃肠间质瘤诊疗指南', version: '2025 版', original: false, page: '页码待核' }
+        { org: 'NCCN', doc: 'NCCN Guidelines · Gastrointestinal Stromal Tumors（GIST）', version: 'v1.2026', original: false, secondaryUrl: L.nccn, note: NOTE.nccn, page: '页码待核' },
+        { org: 'CSCO', doc: 'CSCO 胃肠间质瘤诊疗指南', version: '2025 版', original: false, secondaryUrl: L.csco, note: NOTE.csco, page: '页码待核' }
       ]
     },
     {
@@ -118,10 +140,10 @@ window.DISEASE_PRIMER = {
         '截至 2026-10：本项目资料包收录 2026 年首次公示的 GIST 干预性试验 16 条，状态分布为 RECRUITING 12 / NOT_YET_RECRUITING 3 / ENROLLING_BY_INVITATION 1，含中国中心 8 条；ChinaDrugTrials 与 ChiCTR 未采集，中国登记总量未知。'
       ],
       sources: [
-        { org: 'NCCN', doc: 'NCCN Guidelines · Gastrointestinal Stromal Tumors（GIST）', version: 'v1.2026（2026-01-13 更新）', original: false, page: '页码待核' },
-        { org: 'CSCO', doc: 'CSCO 胃肠间质瘤诊疗指南', version: '2025 版', original: false, page: '页码待核' },
-        { org: '中国 GIST 共识', doc: '中国胃肠间质瘤诊断治疗共识（2017 修改版）', version: '2017', original: false, page: '页码待核' },
-        { org: 'ClinicalTrials.gov', doc: '2026 年 GIST 干预性研究登记资料包（research/gist-cancer/）', version: '检索日 2026-10（首次公示 2026 年起）', original: true, note: '一手登记数据，本项目自采；ChinaDrugTrials 与 ChiCTR 未采集' }
+        { org: 'NCCN', doc: 'NCCN Guidelines · Gastrointestinal Stromal Tumors（GIST）', version: 'v1.2026（2026-01-13 更新）', original: false, secondaryUrl: L.nccn, note: NOTE.nccn, page: '页码待核' },
+        { org: 'CSCO', doc: 'CSCO 胃肠间质瘤诊疗指南', version: '2025 版', original: false, secondaryUrl: L.csco, note: NOTE.csco, page: '页码待核' },
+        { org: '中国 GIST 共识', doc: '中国胃肠间质瘤诊断治疗共识（2017 修改版）', version: '2017', original: false, secondaryUrl: L.consensus, note: NOTE.consensus, page: '页码待核' },
+        { org: 'ClinicalTrials.gov', doc: '2026 年 GIST 干预性研究登记资料包（research/gist-cancer/）', version: '检索日 2026-10（首次公示 2026 年起）', original: true, url: L.ctgov, note: NOTE.ctgov }
       ]
     }
   ]

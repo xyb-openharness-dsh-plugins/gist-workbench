@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * 36 号 疾病概要（「?」入口）· P1–P8 验收探针
+ * 36 号 疾病概要（「?」入口）· P1–P9 验收探针
  *
  * 对象：examples/disease-primer.html（脚手架自带的参考实现）
  * 判据：docs/36-DISEASE-PRIMER.md §5，每条都要能 FAIL——只报绿不报红的闸门等于没有闸门。
@@ -219,6 +219,68 @@ async function main() {
     check('P8', '数据四段齐全、每段有来源、趋势段无禁止词',
       dataCheck.ok,
       dataCheck.ok ? '' : `缺段=${(dataCheck.missing || []).join(',') || '无'} 禁止词=${(dataCheck.hit || []).join(',') || '无'} 缺来源=${(dataCheck.noSrc || []).join(',') || '无'}`)
+
+    /* ---------- P9 排版对齐（36 号 §4.3）：正文/列表/表格/来源行右边界一致 ----------
+       2026-10-27 用户实指：定义段换行点与下方表格不一致，看着像"边距没对齐"。
+       根因是 .dp-lead/.dp-points li 带 max-width:68ch 而表格吃满容器——左对齐、右参差。
+       判据（1440/900/390 三档）：四类元素与 .dp-inner 左边差 ≤1px，右边界极差 ≤2px。 */
+    const measureAlign = () => page.evaluate(() => {
+      const inner = document.querySelector('.dp-inner')
+      if (!inner) return { ok: false, why: '找不到 .dp-inner' }
+      const ir = inner.getBoundingClientRect()
+      /* 前置断言：面板必须真的可见。P7 按过 Esc，若不复开则所有 rect 全 0，
+         极差恒为 0 —— 这正是「探针全绿但没在测」的假通过形态（LESSONS 第 13 类）。 */
+      if (ir.width < 100 || ir.height < 100) return { ok: false, why: `面板不可见（${Math.round(ir.width)}×${Math.round(ir.height)}），测量无效` }
+      const base = ir.left
+      const rows = []
+      for (const q of ['.dp-lead', '.dp-points li', '.dp-table', '.dp-src']) {
+        const el = document.querySelector(q)
+        if (!el) continue
+        const r = el.getBoundingClientRect()
+        rows.push({ q, leftGap: +(r.left - base).toFixed(1), right: r.right })
+      }
+      /* 四类元素必须全部量到：少一个就说明这页结构与该规则不匹配，判失败而不是"勉强通过" */
+      if (rows.length < 4) return { ok: false, why: `可比元素不足（${rows.length}/4：需要 .dp-lead/.dp-points li/.dp-table/.dp-src 都渲染）` }
+      /* 文本类元素（正文/列表/来源行）右边界必须一致；
+         表格允许在窄容器横向滚动（.dp-table min-width:640px + wrap overflow-x:auto），
+         此时表格右边界超出容器是设计意图，只要求它从同一左基线开始且不被压缩换行。 */
+      const text = rows.filter((r) => r.q !== '.dp-table')
+      const rights = text.map((r) => r.right)
+      const spread = +(Math.max(...rights) - Math.min(...rights)).toFixed(1)
+      const leftBad = rows.filter((r) => Math.abs(r.leftGap) > 1).map((r) => `${r.q}:${r.leftGap}`)
+      const tbl = document.querySelector('.dp-table')
+      const wrap = document.querySelector('.dp-table-wrap')
+      const tblOk = !tbl || !wrap || tbl.getBoundingClientRect().width <= wrap.clientWidth + 2
+        || getComputedStyle(wrap).overflowX === 'auto'
+      return { ok: leftBad.length === 0 && spread <= 2 && tblOk, spread, leftBad, tblOk, n: rows.length }
+    })
+    const alignFails = []
+    /* P7 的 Esc 已关面板：先复开，否则量到隐藏元素（right 全 0 → 假通过） */
+    const reopen = async () => {
+      const open = await page.evaluate(() => {
+        const el = document.getElementById('disease-primer') || document.querySelector('.dp-overlay')
+        return !!(el && !el.hidden && el.getBoundingClientRect().width > 100)
+      })
+      if (!open) {
+        await page.evaluate(() => {
+          const t = document.querySelector('[data-primer-open]')
+          if (window.DiseasePrimer && window.DiseasePrimer.open) window.DiseasePrimer.open(t)
+          else if (t) t.click()
+        })
+        await new Promise((r) => setTimeout(r, 350))
+      }
+    }
+    for (const w of [1280, 900, 390]) {
+      await page.setViewport({ width: w, height: 860 })
+      await reopen()
+      await new Promise((r) => setTimeout(r, 200))
+      const a = await measureAlign()
+      if (!a.ok) alignFails.push(`${w}px: ${a.why || `文本右极差 ${a.spread}px 左偏移 ${(a.leftBad || []).join(',') || '无'}${a.tblOk === false ? ' 表格未横向滚动' : ''}`}`)
+    }
+    await page.setViewport({ width: 1280, height: 860 })
+    check('P9', '排版对齐：正文/列表/表格/来源行同左基线、右边界极差 ≤2px（三档）',
+      alignFails.length === 0,
+      alignFails.length ? alignFails.join(' | ') : '1440/900/390 三档均对齐')
 
     /* ---------- E0 控制台无错误 ---------- */
     check('E0', '页面无 JS 报错、无 console error', errors.length === 0, errors.slice(0, 3).join(' | '))

@@ -86,19 +86,29 @@ for (const file of files) {
 }
 
 /* 换癌种残留：上一个癌种的术语不能出现在实现代码里（DEV-REQUIREMENTS H16）。
- * 先剥掉块注释与行注释再扫——"不要抄食管癌那套"这类注释是允许的。 */
+ * 先剥掉块注释与行注释再扫——"不要抄食管癌那套"这类注释是允许的。
+ * 按行判：块注释内容换成空格（保留行号），行尾 `wording-allow` 可显式放行，
+ * 命中词前 12 字符内有否定词也放行（如「CEA / CA19-9 不进默认指标集」这种排除式表述）。 */
 const RESIDUE = ['小咽宝', 'EsopPal', '食管癌', '吞咽', 'SCC-Ag', 'CEA'];
 const residueHits = [];
 for (const file of files) {
   const raw = readFileSync(file, 'utf8')
-  const stripped = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '')
-  for (const term of RESIDUE) {
-    if (stripped.includes(term)) residueHits.push({ file: relative(root, file), term })
-  }
+  const stripped = raw.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+  stripped.split('\n').forEach((line, i) => {
+    if (line.includes('wording-allow')) return
+    const code = line.replace(/^\s*\/\/.*$/, '')
+    for (const term of RESIDUE) {
+      const at = code.indexOf(term)
+      if (at < 0) continue
+      const before = code.slice(Math.max(0, at - 12), at)
+      if (NEGATION.test(before)) continue
+      residueHits.push({ file: relative(root, file), term, line: i + 1 })
+    }
+  })
 }
 if (residueHits.length) {
   console.error(`✗ 残留上一个癌种的术语 ${residueHits.length} 处：\n`)
-  for (const h of residueHits) console.error(`  ${h.file}  含「${h.term}」`)
+  for (const h of residueHits) console.error(`  ${h.file}:${h.line}  含「${h.term}」`)
   console.error('\n换癌种时这些词必须清掉；注释里做对照说明请写成不带完整病名的形式。')
   process.exit(1)
 }

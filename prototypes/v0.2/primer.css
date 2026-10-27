@@ -130,7 +130,8 @@ html.dp-lock, html.dp-lock body{ overflow: hidden; }
 .dp-lead{
   margin: 0 0 10px;
   font-size: calc(13px * var(--dp-tz)); line-height: 1.78; color: var(--dp-ink2);
-  max-width: 68ch;
+  /* 36 号 §4.3：正文块不设 max-width——右边界与表格/小标题一致，段落换行点才一致。
+     曾用 68ch（≈557px），表格却吃满容器，视觉上"左边对齐、右边参差"（P9 断言）。 */
 }
 .dp-empty{ color: var(--dp-muted); font-style: normal; }
 
@@ -139,14 +140,25 @@ html.dp-lock, html.dp-lock body{ overflow: hidden; }
   margin: 0 0 5px;
   font-size: calc(12.5px * var(--dp-tz)); font-weight: 700; color: var(--dp-accent-deep);
 }
+/* 36 号 §4.3：分组内列表同为块级零内边距，只留 li 的符号缩进 */
+.dp-group .dp-points{ margin-bottom: 6px; }
 
-.dp-points{ margin: 0 0 10px; padding-left: 18px; }
+/* 36 号 §4.3：列表块左内边距归零，符号缩进放 li——ul 盒右边界与正文/表格一致 */
+.dp-points{ margin: 0 0 10px; padding-left: 0; list-style: none; }
+.dp-points li{ position: relative; padding-left: 18px; }
+.dp-points li::before{
+  content: ""; position: absolute; left: 6px; top: .72em;
+  width: 5px; height: 5px; border-radius: 50%; background: var(--dp-muted, #7A7186);
+}
 .dp-points li{
   font-size: calc(12.8px * var(--dp-tz)); line-height: 1.75; color: var(--dp-ink2);
-  margin-bottom: 5px; max-width: 68ch;
+  margin-bottom: 5px;
+  /* 同上：列表项与正文同宽 */
 }
 
 .dp-table-wrap{ overflow-x: auto; margin: 0 0 12px; }
+/* 36 号 §4.3：窄容器下表格横向滚动，不压缩列宽导致逐字换行 */
+.dp-table{ min-width: 640px; }
 .dp-table{
   border-collapse: collapse; width: 100%;
   font-size: calc(12.2px * var(--dp-tz));
@@ -192,3 +204,8 @@ html.dp-lock, html.dp-lock body{ overflow: hidden; }
 @media (prefers-reduced-motion: reduce){
   .dp-overlay, .dp-panel{ animation: none; }
 }
+
+/* 36 号 §2.5：指南原件/二次来源链接（可点开或下载） */
+.dp-link { color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.dp-link:hover { text-decoration-thickness: 2px; }
+.dp-miss { color: #b3372e; font-weight: 600; }
