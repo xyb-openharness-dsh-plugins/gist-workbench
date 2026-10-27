@@ -15,7 +15,7 @@
    上传与候选核对、data-countup 数字滚动、prefers-reduced-motion 降级，全部与原型一致。 */
 
 const APP_INFO = {
-  version: '0.1.1',
+  version: '0.1.2',
   build: '2026-10-21',
   channel: 'dev',
   channelLabel: '开发版 · 本机优先',

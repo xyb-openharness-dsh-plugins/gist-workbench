@@ -372,6 +372,58 @@ test('⑩ 客户端注册参数与 lib/layout.js 同源、UI 前缀与 dsh/index
   assert.ok(client.includes(`${apiPrefix}/ui/index.html`), '客户端 iframe 必须指向本包自己的 UI 前缀');
 });
 
+test('⑪ 客户端自建面板（customFrame）与分隔线基线', () => {
+  const client = read(path.join(ROOT, 'lib', 'client.js'));
+  const layoutSrc = read(path.join(ROOT, 'lib', 'layout.js'));
+  const version = read(path.join(ROOT, 'VERSION')).trim();
+
+  // 1) 从标准分栏切到自绘：注册 customFrame=true，Panel 接收宿主交来的原生会话
+  assert.match(layoutSrc, /customFrame:\s*true/, 'lib/layout.js 的 PANEL 必须是 customFrame: true');
+  assert.match(client, /customFrame:\s*true/, '客户端注册必须 customFrame: true');
+  assert.ok(!/customFrame:\s*false/.test(client), '客户端不能再注册 customFrame: false');
+  assert.match(client, /function Panel\(\{\s*conversation\s*\}\)/, 'Panel 必须接收 conversation');
+
+  // 2) 顶栏：品牌 + 版本 + AI 对话按钮；根节点首个子元素是语义 header
+  const iHeader = client.indexOf("h('header'");
+  const iBody = client.indexOf("h('div', { style: bodyStyle }");
+  assert.ok(iHeader > 0 && iBody > iHeader, '根节点首个子元素必须是语义 header');
+  assert.ok(client.includes('AI 对话'), '顶栏必须有「AI 对话」入口');
+  assert.ok(client.includes(`const VERSION = '${version}'`), '顶栏版本号必须等于 VERSION');
+
+  // 3) aside 常挂载、display 控显隐、宽度按 percent% 驱动
+  assert.match(client, /h\('aside'/, '会话区必须是 aside');
+  assert.match(client, /display:\s*paneVisible\s*\?\s*'flex'\s*:\s*'none'/, 'aside 用 display 控显隐，不能卸载');
+  assert.ok(client.includes('`${pct}%`'), 'aside 宽度必须由百分比驱动');
+
+  // 4) DOM 顺序：业务区 → splitter → aside
+  const iBusiness = client.indexOf('style: businessStyle');
+  const iSplitter = client.indexOf("role: 'separator'");
+  const iAside = client.indexOf("h('aside'");
+  assert.ok(iBusiness > 0 && iSplitter > iBusiness && iAside > iSplitter,
+    'DOM 顺序必须是 业务区 → splitter → aside');
+  assert.match(client, /'aria-label':\s*'调整 AI 对话面板宽度'/, '分隔线需要可访问名称');
+
+  // 5) 1px 视觉线 + 11px 透明热区 + 拖动遮罩 + 品牌色发光 + 指针捕获
+  assert.match(client, /width:\s*1,\s*marginRight:\s*-0\.5/, '分隔线视觉宽度必须是 1px');
+  assert.match(client, /width:\s*11/, '分隔线需要 11px 透明热区');
+  assert.match(client, /dragShieldStyle/, '拖动时必须有透明遮罩');
+  assert.match(client, /const SPLITTER_BRAND = '#[0-9A-Fa-f]{6}'/, '分隔线品牌色必须来自本仓主色');
+  assert.match(client, /splitterRgba\s*=/, '悬停光晕要由品牌色派生');
+  assert.match(client, /boxShadow:\s*`0 0 6px/, '悬停需要品牌色发光');
+  assert.match(client, /hovering/, '需要悬停态');
+  assert.match(client, /setPointerCapture/, '需要 pointer capture（失败时 document 兜底）');
+
+  // 6) 区间 25%–45%、默认 35%、步进 2%、键盘、localStorage、窄屏 760px
+  assert.match(client, /AGENT_MIN = 0\.25,\s*AGENT_MAX = 0\.45,\s*AGENT_DEFAULT = 0\.35,\s*AGENT_STEP = 0\.02/,
+    '分隔线参数必须是 25%–45% / 默认 35% / 步进 2%');
+  for (const key of ['ArrowLeft', 'ArrowRight', 'Home', 'End']) {
+    assert.match(client, new RegExp(`${key}\\s*:|'${key}'`), `分隔线要支持 ${key}`);
+  }
+  assert.match(client, /localStorage\.(getItem|setItem)\(WIDTH_KEY/, '宽度要存 localStorage');
+  assert.match(client, /NARROW_BELOW = 760/, '窄屏阈值是 760px');
+  assert.match(client, /ResizeObserver/, '窄屏判定要用容器宽度');
+});
+
 test.after(() => {
   const hits = [...whitelistHits.entries()];
   const line = hits.length

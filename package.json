@@ -1,6 +1,6 @@
 {
   "name": "@xyb-community/gist-workbench",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "本机优先的胃肠间质瘤病理与危险度档案、靶向治疗线序、复查影像与用药副作用记录工作台",
   "private": true,
   "type": "module",
