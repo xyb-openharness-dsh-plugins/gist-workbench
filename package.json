@@ -15,6 +15,7 @@
     "dsh",
     "lib",
     "assets",
+    "public",
     "cordis.patch.yml",
     "README.md",
     "NOTICE.md"
