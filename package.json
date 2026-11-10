@@ -22,7 +22,7 @@
     "demo"
   ],
   "scripts": {
-    "check": "node scripts/check-version.mjs && node scripts/check-syntax.mjs && node scripts/check-schema.mjs && node scripts/check-wording.mjs && node scripts/check-demo-columns.mjs && node --check dsh/index.js && node --check lib/client.js && node scripts/check-workbench-package.mjs . && node scripts/check-primer-links.mjs && node scripts/check-primer-links.mjs --data public/primer-data.js && node scripts/check-primer-copies.mjs",
+    "check": "node scripts/check-version.mjs && node scripts/check-syntax.mjs && node scripts/check-schema.mjs && node scripts/check-wording.mjs && node scripts/check-demo-columns.mjs && node --check dsh/index.js && node --check lib/client.js && node scripts/check-workbench-package.mjs . && node scripts/check-primer-links.mjs && node scripts/check-primer-links.mjs --data public/primer-data.js && node scripts/check-primer-copies.mjs && node scripts/check-agent-pane-contract.mjs .",
     "test": "node --test test/*.test.mjs",
     "demo": "node demo/build-demo-data.mjs",
     "trials": "node scripts/fetch-gist-trials-2026.mjs",
